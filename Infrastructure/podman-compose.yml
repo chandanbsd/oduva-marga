@@ -1,0 +1,12 @@
+version: "3.8"
+
+services:
+  oduva-mage-front-end:
+    build:
+      context: ../oduva-mage-front-end
+      dockerfile: Dockerfile
+    image: oduva-mage-front-end:latest
+    container_name: oduva-mage-front-end
+    restart: unless-stopped
+    ports:
+      - "8080:80"
