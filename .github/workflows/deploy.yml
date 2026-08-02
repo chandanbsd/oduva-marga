@@ -1,0 +1,38 @@
+name: Build and Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Stop existing containers
+        working-directory: Infrastructure
+        run: podman-compose down || true
+
+      - name: Build image
+        working-directory: Infrastructure
+        run: podman-compose build
+
+      - name: Deploy
+        working-directory: Infrastructure
+        run: podman-compose up -d
+
+      - name: Smoke test
+        run: |
+          for i in $(seq 1 10); do
+            if curl -sf http://localhost:8080 > /dev/null; then
+              echo "Service is up"
+              exit 0
+            fi
+            echo "Waiting for service to become available... ($i/10)"
+            sleep 3
+          done
+          echo "Service failed to respond on port 8080"
+          exit 1
