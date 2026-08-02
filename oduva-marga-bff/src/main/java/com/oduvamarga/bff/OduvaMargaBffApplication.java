@@ -1,4 +1,4 @@
-package org.oduva_marga.oduva_marga_bff;
+package com.oduvamarga.bff;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -7,7 +7,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 public class OduvaMargaBffApplication {
 
 	static void main(String[] args) {
-		SpringAppliction.run(OduvaMargaBffApplication.class, args);
+		SpringApplication.run(OduvaMargaBffApplication.class, args);
 	}
 
 }
