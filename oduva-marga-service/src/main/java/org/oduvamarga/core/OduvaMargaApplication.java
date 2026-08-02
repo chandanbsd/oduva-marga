@@ -1,4 +1,4 @@
-package org.oduva_marga.oduva_marga;
+package org.oduvamarga.core;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
