@@ -8,15 +8,62 @@ on:
 jobs:
   deploy:
     runs-on: self-hosted
+    env:
+      PUBLIC_HOST: ${{ vars.PUBLIC_HOST }}
+      PUBLIC_PORT: ${{ vars.PUBLIC_PORT }}
+      POSTGRES_USER: ${{ vars.POSTGRES_USER }}
+      POSTGRES_DB: ${{ vars.POSTGRES_DB }}
+      SERVICE_DB_NAME: ${{ vars.SERVICE_DB_NAME }}
+      KEYCLOAK_ADMIN: ${{ vars.KEYCLOAK_ADMIN }}
+      KEYCLOAK_REALM: ${{ vars.KEYCLOAK_REALM }}
+      POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+      KEYCLOAK_ADMIN_PASSWORD: ${{ secrets.KEYCLOAK_ADMIN_PASSWORD }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Validate required configuration is set
+        run: |
+          missing=()
+          for name in PUBLIC_HOST PUBLIC_PORT POSTGRES_USER POSTGRES_DB SERVICE_DB_NAME KEYCLOAK_ADMIN KEYCLOAK_REALM POSTGRES_PASSWORD KEYCLOAK_ADMIN_PASSWORD; do
+            if [ -z "${!name}" ]; then
+              missing+=("$name")
+            fi
+          done
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "Missing required repository configuration: ${missing[*]}"
+            echo "Set non-secret values under Settings > Secrets and variables > Actions > Variables,"
+            echo "and passwords under Settings > Secrets and variables > Actions > Secrets."
+            echo "See Infrastructure/README.md's 'GitHub Actions (CI/CD) deploy' section."
+            exit 1
+          fi
+          echo "All required configuration present."
+
+      - name: Write .env
+        working-directory: Infrastructure
+        run: |
+          cat > .env <<EOF
+          POSTGRES_USER=$POSTGRES_USER
+          POSTGRES_PASSWORD=$POSTGRES_PASSWORD
+          POSTGRES_DB=$POSTGRES_DB
+          SERVICE_DB_NAME=$SERVICE_DB_NAME
+          KEYCLOAK_ADMIN=$KEYCLOAK_ADMIN
+          KEYCLOAK_ADMIN_PASSWORD=$KEYCLOAK_ADMIN_PASSWORD
+          KEYCLOAK_REALM=$KEYCLOAK_REALM
+          PUBLIC_HOST=$PUBLIC_HOST
+          PUBLIC_PORT=$PUBLIC_PORT
+          EOF
+          chmod 600 .env
 
       - name: Stop existing containers
         working-directory: Infrastructure
         run: podman-compose down || true
 
-      - name: Build image
+      - name: Pull pinned base images
+        working-directory: Infrastructure
+        run: podman-compose pull postgres keycloak
+
+      - name: Build application images
         working-directory: Infrastructure
         run: podman-compose build
 
@@ -25,14 +72,21 @@ jobs:
         run: podman-compose up -d
 
       - name: Smoke test
+        working-directory: Infrastructure
         run: |
-          for i in $(seq 1 10); do
-            if curl -sf http://localhost:8080 > /dev/null; then
-              echo "Service is up"
+          echo "Waiting for the stack to come up on http://localhost:${PUBLIC_PORT}..."
+          for i in $(seq 1 20); do
+            front_ok=false; auth_ok=false; api_ok=false
+            curl -sf "http://localhost:${PUBLIC_PORT}/" > /dev/null && front_ok=true
+            curl -sf "http://localhost:${PUBLIC_PORT}/auth/realms/master/.well-known/openid-configuration" > /dev/null && auth_ok=true
+            curl -sf "http://localhost:${PUBLIC_PORT}/api/actuator/health" > /dev/null && api_ok=true
+            if $front_ok && $auth_ok && $api_ok; then
+              echo "Front-end, Keycloak, and BFF are all responding."
               exit 0
             fi
-            echo "Waiting for service to become available... ($i/10)"
-            sleep 3
+            echo "Waiting... front-end=$front_ok keycloak=$auth_ok bff=$api_ok ($i/20)"
+            sleep 5
           done
-          echo "Service failed to respond on port 8080"
+          echo "Stack failed to become healthy in time. Recent logs:"
+          podman-compose logs --tail=50
           exit 1

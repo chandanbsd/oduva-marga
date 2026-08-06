@@ -1,3 +1,20 @@
 spring:
   application:
     name: oduva-marga
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/oduva_marga_service}
+    username: ${SPRING_DATASOURCE_USERNAME:oduva}
+    password: ${SPRING_DATASOURCE_PASSWORD:changeme}
+
+server:
+  port: ${SERVER_PORT:8082}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      probes:
+        enabled: true
