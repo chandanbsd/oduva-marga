@@ -1,11 +1,11 @@
-FROM node:20-alpine AS build
+FROM docker.io/library/node:20-alpine AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 COPY . .
 RUN npm run build -- --configuration production
 
-FROM nginx:1.27-alpine AS runtime
+FROM docker.io/library/nginx:1.27-alpine AS runtime
 COPY --from=build /app/dist/oduva-mage-front-end/browser /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 EXPOSE 80

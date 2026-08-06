@@ -184,6 +184,24 @@ sudo ./svc.sh start
 Run the runner as the **same non-root user with rootless Podman configured**
 used in the manual steps above — not root.
 
+**Troubleshooting: `sudo ./svc.sh status` shows `status=203/EXEC` / "failed"**
+On an SELinux-enforcing VM (Fedora/RHEL/Rocky/CentOS-family), this means
+SELinux is blocking systemd from executing `runsvc.sh` because it's sitting
+under a home directory (`user_home_t` context) — not a real permissions
+problem, even though the error is literally "Permission denied". Confirm with
+`sudo journalctl -u actions.runner.*.service --no-pager -n 20`, then fix by
+giving the runner directory a context systemd is allowed to run:
+
+```sh
+sudo semanage fcontext -a -t bin_t "$HOME/actions-runner(/.*)?"
+sudo restorecon -R -v "$HOME/actions-runner"
+sudo ./svc.sh start
+```
+
+(`semanage` missing? `sudo dnf install -y policycoreutils-python-utils` first.)
+See `INFRASTRUCTURE_DECISIONS.md`'s Gotchas section for the full diagnostic
+trail. Debian/Ubuntu VMs (no SELinux by default) won't hit this.
+
 ### 2. Set the required repository configuration
 
 The workflow builds `Infrastructure/.env` itself, fresh, on every run — from
