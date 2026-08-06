@@ -101,6 +101,33 @@ Docker Compose.
 - Rootless operation is preserved: the deploy runner should run as a non-root
   user with rootless Podman configured, not root.
 
+**Why the deploy workflow needs no SSH keys or registry — the self-hosted
+runner's network model:** the GitHub Actions runner agent runs directly on
+the VM itself (installed per `Infrastructure/README.md`'s runner-registration
+steps), not on GitHub's infrastructure. It holds an **outbound** connection
+*from* the VM *to* GitHub (long-poll to `github.com`/`*.actions.githubusercontent.com`),
+registering itself as available for jobs tagged `runs-on: self-hosted`. On a
+push to `main`, GitHub dispatches the job over that existing outbound
+connection — it never initiates an inbound connection to the VM. The workflow
+then runs as ordinary local commands (checkout, `podman-compose build/up`)
+directly on the VM's own filesystem. There is no "reach the VM" step to
+provision: the code that deploys is already running where it needs to deploy.
+Consequences worth being deliberate about:
+- **No inbound port is needed for CI at all** — only `PUBLIC_PORT` (end users
+  reaching the deployed app) needs an inbound firewall rule; nothing
+  GitHub-Actions-related does.
+- **Outbound HTTPS (443) from the VM to GitHub's domains must work** for the
+  runner to poll for jobs and stream logs back — default on most VMs, but
+  worth checking if the Vultr firewall group ever gets egress rules added.
+- **Trust boundary**: the runner executes workflow code with the same local
+  privileges as whatever user it runs as (see the non-root point above) —
+  anyone who can get a workflow to run has effectively got code execution on
+  the VM. This workflow triggers only on `push` to `main` and
+  `workflow_dispatch`, not on pull requests, so that's scoped to people with
+  push access to `main`, not arbitrary fork PRs — but it's worth keeping in
+  mind now that real secrets (`POSTGRES_PASSWORD`, `KEYCLOAK_ADMIN_PASSWORD`,
+  see ID-012) flow through this same runner.
+
 ---
 
 ### ID-002: Five-container topology, single public entrypoint
@@ -380,12 +407,16 @@ it does **not** use a `gradle:<version>` base image.
 
 **Status:** Accepted
 
-**Decision:** No `latest` tags anywhere in the stack:
-- `postgres:16-alpine`
+**Decision:** No `latest` tags anywhere in the stack, and every reference is
+**fully registry-qualified** (not just tag-pinned — see the short-name
+resolution Gotcha below for why the registry prefix is load-bearing, not
+cosmetic):
+- `docker.io/library/postgres:16-alpine`
 - `quay.io/keycloak/keycloak:26.0`
-- `eclipse-temurin:25-jdk-alpine` (build stage) / `eclipse-temurin:25-jre-alpine` (runtime stage)
-- `nginx:1.27-alpine` (pre-existing, front-end runtime stage)
-- `node:20-alpine` (pre-existing, front-end build stage)
+- `docker.io/library/eclipse-temurin:25-jdk-alpine` (build stage) /
+  `docker.io/library/eclipse-temurin:25-jre-alpine` (runtime stage)
+- `docker.io/library/nginx:1.27-alpine` (pre-existing, front-end runtime stage)
+- `docker.io/library/node:20-alpine` (pre-existing, front-end build stage)
 
 **Context:** Standard IaC reproducibility practice — `latest` drifts silently
 between builds and between the VM and any local/dev machine.
@@ -394,7 +425,13 @@ between builds and between the VM and any local/dev machine.
 `podman-compose.yml` or a `Dockerfile`, not surprises picked up on a rebuild.
 Availability of the `25-jdk-alpine`/`25-jre-alpine` Eclipse Temurin tags was
 explicitly verified against the Docker Hub API before pinning them (see
-Gotchas) — Java 25 alpine tags were not a safe assumption going in.
+Gotchas) — Java 25 alpine tags were not a safe assumption going in. The
+registry-qualification part of this decision was **not** part of the original
+design — it was added after a real CI failure (see Gotchas: "Podman's
+enforcing short-name resolution...") showed that tag-pinning alone isn't
+enough; without an explicit registry, Podman still has to resolve which
+registry an unqualified name like `postgres:16-alpine` means, and that
+resolution step itself can fail outright in a non-interactive context.
 
 ---
 
@@ -610,6 +647,108 @@ smoke test checks `/auth/realms/master/.well-known/openid-configuration`
 instead — still proves Keycloak is genuinely healthy and correctly proxied,
 without coupling CI health-checking to manual setup having already happened.
 
+### Self-hosted runner service fails with `status=203/EXEC` on SELinux-enforcing VMs
+
+On a VM with SELinux enforcing (Fedora/RHEL/Rocky/CentOS-family — confirmed on
+this deployment's own VM), `sudo ./svc.sh install && sudo ./svc.sh start`
+installs and starts the systemd unit without error, but the service
+immediately fails:
+
+```
+Main PID: ... (code=exited, status=203/EXEC)
+```
+
+`journalctl -u <service>` shows the real reason, which the truncated default
+`systemctl status` output hides:
+
+```
+Unable to locate executable '/home/<user>/actions-runner/runsvc.sh': Permission denied
+```
+
+This is **not** a real Unix permissions problem — `ls -la runsvc.sh` shows
+correct ownership and `-rwxr-xr-x`. It's SELinux: anything under a home
+directory defaults to the `user_home_t` context, and systemd-launched
+services aren't permitted to execute files with that context, regardless of
+the Unix mode bits. Two independent signals confirm this before ever running
+`getenforce`: `sudo ./svc.sh install`'s own output includes a line like
+`Relabeled .../actions.runner....service from unconfined_u:object_r:user_home_t:s0
+to unconfined_u:object_r:systemd_unit_file_t:s0` (systemd relabeling the *unit
+file*, proving SELinux is active and enforcing relabeling on this host), and
+`ls -la runsvc.sh` shows a trailing `.` after the permission bits
+(`-rwxr-xr-x.`), which is `ls`'s way of indicating the file carries an SELinux
+context worth inspecting.
+
+**Fix** — give the runner directory a context systemd is allowed to execute,
+as a persistent policy rule (not a one-off relabel that a future `restorecon`
+or reinstall would undo):
+
+```sh
+sudo semanage fcontext -a -t bin_t "/home/<user>/actions-runner(/.*)?"
+sudo restorecon -R -v /home/<user>/actions-runner
+sudo ./svc.sh start
+```
+
+(`semanage` may need installing first: `sudo dnf install -y policycoreutils-python-utils`.)
+
+This only bites VMs with SELinux enforcing — a Debian/Ubuntu VM (no SELinux by
+default) would install and start the same runner without hitting this at all.
+Worth checking `getenforce` up front on any new VM before troubleshooting a
+runner service failure as if it were a generic permissions issue.
+
+### Podman's enforcing short-name resolution breaks unqualified image pulls with no TTY
+
+The very first real CI-driven deploy on the VM failed at the build step with:
+
+```
+Error: creating build container: short-name resolution enforced but cannot prompt without a TTY
+```
+
+and, during the preceding pull step:
+
+```
+Error: short-name resolution enforced but cannot prompt without a TTY
+Trying to pull quay.io/keycloak/keycloak:26.0...
+```
+
+**Root cause:** every `FROM`/`image:` reference in this stack was written as a
+short name — `postgres:16-alpine`, `eclipse-temurin:25-jdk-alpine`,
+`node:20-alpine`, `nginx:1.27-alpine` — with no registry prefix. Podman's
+default `short-name-mode` is `enforcing`: if it can't be certain which
+registry an unqualified name refers to, it normally prompts interactively
+("did you mean `docker.io/library/postgres`?"). A systemd-run self-hosted
+runner has no TTY to prompt on, so instead of guessing it just fails outright.
+`quay.io/keycloak/keycloak:26.0` was unaffected because it was already fully
+qualified — the pull step's error line belongs to the `postgres` pull that
+ran immediately before it in the same step, not to Keycloak.
+
+**Why this wasn't caught by this document's own "verify before you write it
+down" rule during the original local Podman testing** (see the top-level
+Verification section of the original build-out): the local machine used for
+that verification either already had these exact image layers cached from
+earlier ad-hoc `podman build`/`podman pull` calls, or its Podman install has a
+more permissive short-name configuration than the VM's. Either way, it masked
+the defect rather than exercising the real failure path — the very same thing
+that happened again on the VM itself: the front-end's `node:20-alpine` and
+`nginx:1.27-alpine` layers were already cached locally from earlier manual
+testing on that VM and built fine via cache in the same failing run, while
+`eclipse-temurin:25-jdk-alpine` (never previously pulled on that VM) hit the
+error. **Lesson: a short-name image reference "working" is not evidence it's
+correctly qualified — it may just mean the layer was already cached
+somewhere.** The only reliable way to know is to fully qualify every
+reference, or to test on a machine with no prior cache and no TTY.
+
+**Fix:** fully qualify every base image and compose `image:` reference with
+its registry (`docker.io/library/<name>` for Docker Official Images —
+confirmed via the Docker Hub API, the same method used to verify tag
+availability for ID-010 — `quay.io/...` for anything already on Quay, etc.),
+rather than relying on Podman to resolve an unqualified name. Applied to
+`Infrastructure/podman-compose.yml` (`postgres`) and all three Dockerfiles
+(`eclipse-temurin` ×2 in both `oduva-marga-bff` and `oduva-marga-service`,
+`node` and `nginx` in `oduva-mage-front-end`). Re-verified locally after the
+fix (`podman-compose config` + a full `podman build` of the BFF image) before
+this was written down — **not yet re-verified against an actual CI run on the
+VM** at the time this entry was written; confirm on the next push.
+
 ## Open Questions / Deferred Work
 
 - **TLS**: this stack is plain HTTP end-to-end. Once a real domain points at
@@ -638,6 +777,37 @@ without coupling CI health-checking to manual setup having already happened.
 
 ## Changelog
 
+- **2026-08-06 (6)** — Bumped `actions/checkout` from `@v4` to `@v7` in
+  `.github/workflows/deploy.yml` (verified via the GitHub API that `v7`
+  declares `runs.using: node24`, vs. `v4`'s `node20`) — resolves the "Node 20
+  is being deprecated" warning seen in the CI log during the short-name
+  resolution debugging above. Routine version bump, not a design decision;
+  noted here only for the audit trail.
+- **2026-08-06 (5)** — Fixed the first real CI-driven build failure on the VM:
+  every base image reference (`postgres`, `eclipse-temurin` ×2, `node`,
+  `nginx`) was an unqualified short name, which Podman's enforcing
+  short-name-resolution mode can't resolve without a TTY to prompt on —
+  fatal in the self-hosted runner's non-interactive systemd context. Fully
+  qualified all of them with their registry
+  (`docker.io/library/...`/`quay.io/...`) in `Infrastructure/podman-compose.yml`
+  and all three Dockerfiles; re-verified locally (compose config + a full
+  `podman build`) before writing this up. ID-010 amended in place (not
+  reversed) to reflect that "pinned" now also means registry-qualified, with
+  a new Gotcha entry explaining the failure mode and why local testing hadn't
+  caught it. `loginctl enable-linger` was tried first based on a plausible
+  but wrong hypothesis (ruled out by the user re-testing with linger already
+  enabled) — deliberately **not** documented as a fix anywhere, since it
+  wasn't actually the cause of this failure.
+- **2026-08-06 (4)** — Added a Gotcha entry documenting the SELinux
+  `status=203/EXEC` failure hit while registering the self-hosted runner on
+  this deployment's actual VM (SELinux-enforcing, home-directory `user_home_t`
+  context blocking systemd execution) and its fix (`semanage fcontext` +
+  `restorecon` to `bin_t`). `Infrastructure/README.md`'s runner-registration
+  section gained a matching troubleshooting note.
+- **2026-08-06 (3)** — Added a note under ID-001 explaining the self-hosted
+  runner's network/trust model (outbound-only connection to GitHub, why no
+  SSH keys or registry are needed, the code-execution trust boundary) — asked
+  directly by the user, previously asserted but never spelled out.
 - **2026-08-06 (2)** — `.github/workflows/deploy.yml` rewritten to actually
   deploy the full 5-container stack (ID-012): generates `Infrastructure/.env`
   from GitHub Actions repo Variables/Secrets on every run instead of
