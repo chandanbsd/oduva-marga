@@ -1,4 +1,4 @@
-package org.oduva_marga.oduva_marga_bff;
+package com.oduvamarga.bff;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
