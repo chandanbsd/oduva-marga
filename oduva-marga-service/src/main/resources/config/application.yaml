@@ -2,9 +2,15 @@ spring:
   application:
     name: oduva-marga
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/oduva_marga_service}
-    username: ${SPRING_DATASOURCE_USERNAME:oduva}
-    password: ${SPRING_DATASOURCE_PASSWORD:changeme}
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:543/iduvamarga}
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD:user}
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${ISSUER_URI:http://auth.om.local/realms/test}
+          audiences: ${AUDIENCE:oduvamarga_api}
 
 server:
   port: ${SERVER_PORT:8082}
