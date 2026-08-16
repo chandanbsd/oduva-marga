@@ -1,10 +1,10 @@
-package org.oduva_marga.oduva_marga_bff;
+package com.oduvamarga.core;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
 @SpringBootTest
-class OduvaMargaBffApplicationTests {
+class OduvaMargaApplicationTests {
 
 	@Test
 	void contextLoads() {

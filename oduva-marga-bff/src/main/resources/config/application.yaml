@@ -1,6 +1,24 @@
 spring:
   application:
     name: oduva-marga-bff
+  security:
+    oauth2:
+      client:
+        registration:
+          keycloak:
+            client-id: ${CLINET_ID:oduvamarga}
+            client-secret: ${CLIENT_SECRET}
+            scope: openid
+        provider:
+          keycloak:
+            issuer-uri: ${ISSUER_URI:http://auth.om.local/realms/test}
+logging:
+  level:
+    org:
+      springframework:
+        security: TRACE
+        web: DEBUG
+        web.client.RestTemplate: DEBUG
 
 server:
   port: ${SERVER_PORT:8081}
@@ -19,6 +37,3 @@ management:
 # placeholders for when the BFF's OAuth2 resource-server config is built out.
 oduva:
   service-base-url: ${SERVICE_BASE_URL:http://localhost:8082}
-  oidc:
-    issuer-uri: ${OIDC_ISSUER_URI:}
-    jwk-set-uri: ${OIDC_JWK_SET_URI:}
