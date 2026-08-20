@@ -50,8 +50,12 @@ successful login, and login rejected with invalid credentials.
 
 ```sh
 npm run build:mock   # ng build --configuration=mock
-npx http-server dist/oduva-mage-front-end/mock/browser -p 4300
+npx sirv-cli dist/oduva-mage-front-end/mock/browser --port 4300 --single
 ```
+
+(`--single` gives the static build SPA history-API fallback, so a direct
+navigation/reload on `/apply` or `/login` resolves to `index.html` instead of
+a 404 — plain `http-server` doesn't support this.)
 
 Open `http://localhost:4300` — a stakeholder or QA reviewer can click
 through both pages with no build tooling or backend running. Confirm the
