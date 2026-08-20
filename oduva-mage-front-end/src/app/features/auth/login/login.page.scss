@@ -1,0 +1,16 @@
+.login-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  max-width: 400px;
+  margin: 0 auto;
+  padding: 1.5rem;
+
+  &__field {
+    width: 100%;
+  }
+
+  &__error {
+    color: var(--mat-sys-error, #b3261e);
+  }
+}

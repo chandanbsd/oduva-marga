@@ -1,0 +1,95 @@
+@if (!isSubmitted()) {
+  <form [formGroup]="form" (ngSubmit)="onSubmit()" class="enrollment-application-page">
+    <h1>Enrollment Application</h1>
+
+    <div class="enrollment-application-page__row">
+      <mat-form-field appearance="outline" class="enrollment-application-page__field">
+        <mat-label>First name</mat-label>
+        <input matInput formControlName="firstName" />
+        @if (form.controls.firstName.hasError('required')) {
+          <mat-error>First name is required.</mat-error>
+        }
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="enrollment-application-page__field">
+        <mat-label>Last name</mat-label>
+        <input matInput formControlName="lastName" />
+        @if (form.controls.lastName.hasError('required')) {
+          <mat-error>Last name is required.</mat-error>
+        }
+      </mat-form-field>
+    </div>
+
+    <mat-form-field appearance="outline" class="enrollment-application-page__field">
+      <mat-label>Personal email</mat-label>
+      <input matInput type="email" formControlName="personalEmail" />
+      @if (form.controls.personalEmail.hasError('required')) {
+        <mat-error>Email is required.</mat-error>
+      }
+      @if (form.controls.personalEmail.hasError('email')) {
+        <mat-error>Enter a valid email address.</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="enrollment-application-page__field">
+      <mat-label>Enrollment type</mat-label>
+      <mat-select formControlName="enrollmentTypes" multiple>
+        @for (option of enrollmentTypeOptions; track option.value) {
+          <mat-option [value]="option.value">{{ option.label }}</mat-option>
+        }
+      </mat-select>
+      @if (form.controls.enrollmentTypes.hasError('required')) {
+        <mat-error>Select at least one enrollment type.</mat-error>
+      }
+    </mat-form-field>
+
+    <section class="enrollment-application-page__section">
+      <h2>Home address</h2>
+      <app-address-form-group [addressGroup]="form.controls.homeAddress" />
+    </section>
+
+    <section class="enrollment-application-page__section">
+      <h2>Additional addresses</h2>
+      @for (addressGroup of additionalAddresses.controls; track addressGroup; let i = $index) {
+        <div class="enrollment-application-page__additional-address">
+          <app-address-form-group
+            [addressGroup]="addressGroup"
+            [editableLabel]="true"
+            [siblingLabels]="siblingLabelsFor(i)"
+          />
+          <button
+            mat-icon-button
+            type="button"
+            (click)="removeAdditionalAddress(i)"
+            aria-label="Remove address"
+          >
+            <mat-icon>close</mat-icon>
+          </button>
+        </div>
+      }
+      <button mat-stroked-button type="button" (click)="addAdditionalAddress()">
+        Add another address
+      </button>
+    </section>
+
+    @if (submissionError()) {
+      <p class="enrollment-application-page__error" role="alert">{{ submissionError() }}</p>
+    }
+
+    <button mat-flat-button color="primary" type="submit" [disabled]="isSubmitting()">
+      @if (isSubmitting()) {
+        <mat-spinner diameter="20" />
+      } @else {
+        Submit application
+      }
+    </button>
+  </form>
+} @else {
+  <div class="enrollment-application-page__confirmation" data-testid="confirmation">
+    <h1>Application submitted</h1>
+    <p>Thank you — your enrollment application has been received.</p>
+    @if (lastSubmission(); as submission) {
+      <p class="enrollment-application-page__confirmation-id">Reference: {{ submission.id }}</p>
+    }
+  </div>
+}
