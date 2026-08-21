@@ -1,0 +1,7 @@
+<div class="landing-page">
+  @if (user(); as currentUser) {
+    <h1>Welcome, {{ currentUser.displayName }}</h1>
+    <p>You are signed in as {{ currentUser.email }}.</p>
+    <button mat-stroked-button type="button" (click)="logout()">Log out</button>
+  }
+</div>

@@ -1,0 +1,20 @@
+.address-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+
+  &__row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+
+  &__field {
+    flex: 1 1 220px;
+    min-width: 0;
+
+    &--label {
+      max-width: 320px;
+    }
+  }
+}

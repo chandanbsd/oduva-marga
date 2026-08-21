@@ -20,10 +20,10 @@ describe('AppComponent', () => {
     expect(app.title).toEqual('oduva-mage-front-end');
   });
 
-  it('should render title', () => {
+  it('renders a router outlet for the routed pages', () => {
     const fixture = TestBed.createComponent(AppComponent);
     fixture.detectChanges();
     const compiled = fixture.nativeElement as HTMLElement;
-    expect(compiled.querySelector('h1')?.textContent).toContain('Hello, oduva-mage-front-end');
+    expect(compiled.querySelector('router-outlet')).not.toBeNull();
   });
 });

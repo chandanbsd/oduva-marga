@@ -1,0 +1,63 @@
+<div class="address-form-group" [formGroup]="addressGroup">
+  @if (editableLabel) {
+    <mat-form-field appearance="outline" class="address-form-group__field address-form-group__field--label">
+      <mat-label>Label</mat-label>
+      <input matInput formControlName="label" placeholder="e.g. Work" />
+      @if (addressGroup.controls.label.hasError('required')) {
+        <mat-error>A label is required.</mat-error>
+      }
+      @if (addressGroup.controls.label.hasError('duplicateLabel')) {
+        <mat-error>This label is already used by another address.</mat-error>
+      }
+    </mat-form-field>
+  }
+
+  <mat-form-field appearance="outline" class="address-form-group__field">
+    <mat-label>Street address</mat-label>
+    <input matInput formControlName="street1" />
+    @if (addressGroup.controls.street1.hasError('required')) {
+      <mat-error>Street address is required.</mat-error>
+    }
+  </mat-form-field>
+
+  <mat-form-field appearance="outline" class="address-form-group__field">
+    <mat-label>Street address 2 (optional)</mat-label>
+    <input matInput formControlName="street2" />
+  </mat-form-field>
+
+  <div class="address-form-group__row">
+    <mat-form-field appearance="outline" class="address-form-group__field">
+      <mat-label>City</mat-label>
+      <input matInput formControlName="city" />
+      @if (addressGroup.controls.city.hasError('required')) {
+        <mat-error>City is required.</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="address-form-group__field">
+      <mat-label>State / Region</mat-label>
+      <input matInput formControlName="stateRegion" />
+      @if (addressGroup.controls.stateRegion.hasError('required')) {
+        <mat-error>State/Region is required.</mat-error>
+      }
+    </mat-form-field>
+  </div>
+
+  <div class="address-form-group__row">
+    <mat-form-field appearance="outline" class="address-form-group__field">
+      <mat-label>Postal code</mat-label>
+      <input matInput formControlName="postalCode" />
+      @if (addressGroup.controls.postalCode.hasError('required')) {
+        <mat-error>Postal code is required.</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="address-form-group__field">
+      <mat-label>Country</mat-label>
+      <input matInput formControlName="country" />
+      @if (addressGroup.controls.country.hasError('required')) {
+        <mat-error>Country is required.</mat-error>
+      }
+    </mat-form-field>
+  </div>
+</div>
