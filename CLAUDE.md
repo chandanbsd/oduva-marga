@@ -1,5 +1,26 @@
 # Project instructions for Claude Code
 
+## Keeping the coding standards doc current
+
+This repo has a living coding standards doc at
+[`CODING_STANDARDS.md`](CODING_STANDARDS.md). It's the concrete, per-module
+companion to the constitution's Principle V (Code Quality & Consistency) —
+the constitution says *what* is required (e.g. constructor injection,
+strict TypeScript, package-by-feature); `CODING_STANDARDS.md` says exactly
+which tools, flags, and naming conventions currently implement that in this
+repo, verified against the real config files rather than assumed.
+
+**Any time you add or change a linter/formatter/static-analysis config,
+introduce a new module, or establish a naming/style convention not already
+documented there, update `CODING_STANDARDS.md` before you consider the task
+done.** If you close one of the items in its "Known gaps vs. the
+constitution" section (e.g. wiring lint into CI, adding Checkstyle), move
+that item out of Known Gaps into the relevant module section rather than
+deleting it silently — say what changed. Don't duplicate reasoning that
+belongs in `Infrastructure/INFRASTRUCTURE_DECISIONS.md` (topology/deploy) or
+in the constitution itself (principles) — this doc is the tooling/style
+layer underneath both.
+
 ## Keeping the infrastructure decision record current
 
 This repo has a living decision log at
