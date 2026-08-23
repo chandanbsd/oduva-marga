@@ -112,17 +112,51 @@ document doesn't silently overstate what's actually enforced.
   directly, and holds no business logic beyond presentation/view-state
   (constitution Principle II).
 
-## Mobile app (`oduva-marga-mobile-app/oduva-marga`, Expo / React Native)
+## Mobile app (`oduva-marga-mobile-app`, Expo / React Native)
 
 - **Stack:** Expo SDK ~57, Expo Router (file-based routing under `src/app`),
   React 19.2.3, React Native 0.86.2, TypeScript ~6.0.3 with `strict: true`
   extending `expo/tsconfig.base`.
-- **Read this first:** this module's own `AGENTS.md` (imported into its
-  `CLAUDE.md` via `@AGENTS.md`) states Expo's APIs have changed and
-  instructs reading the exact versioned docs at
-  `https://docs.expo.dev/versions/v57.0.0/` before writing any code in this
-  module. That instruction is authoritative for this module and isn't
-  restated here — don't let this document's guidance substitute for it.
+- **Read this first:** this module has no `AGENTS.md` or `CLAUDE.md` of its
+  own anymore — the Expo-version warning that used to live there now lives
+  in the root [`/AGENTS.md`](AGENTS.md), in its final section, "Expo HAS
+  CHANGED." It states Expo's APIs have changed and instructs reading the
+  exact versioned docs at `https://docs.expo.dev/versions/v57.0.0/` before
+  writing any code in this module. That instruction is authoritative for
+  this module and isn't restated here — don't let this document's guidance
+  substitute for it.
+- **UI components:** visible/interactive UI is built from `@expo/ui`'s
+  Universal component set — the only one of `@expo/ui`'s categories that's
+  cross-platform (Android, iOS, and web from one source; see
+  `https://docs.expo.dev/versions/v57.0.0/sdk/ui/`), which is the set of
+  platforms this app actually ships to (`app.json`'s `web` block,
+  `react-native-web`, and the `.web.tsx` split below all confirm that).
+  Universal spans interactive controls (`Button`, `Checkbox`, `Switch`,
+  `TextInput`, `Picker`, `Slider`, `BottomSheet`, `Collapsible`, and more)
+  as well as basic content/layout primitives (`Text`, `Icon`, `List`,
+  `Column`, `Row`) — treat the docs page above as the current list, not
+  the examples in this bullet. Universal components render through a
+  `Host` component that bridges into the native SwiftUI/Compose view
+  tree. Don't use `@expo/ui`'s other two categories — Jetpack Compose
+  (Android only) and SwiftUI (iOS only) — directly, since each covers
+  only one platform, and don't add a third-party component/styling
+  library (`nativewind`, `tamagui`, `react-native-paper`, `native-base`,
+  etc.) — none are in `package.json` today, and it should stay that way.
+  This doesn't cover what Universal has no equivalent for: images
+  (`expo-image`), safe-area handling (`react-native-safe-area-context`),
+  gesture handling (`react-native-gesture-handler`), and navigation
+  (`expo-router`) all keep using their current dedicated modules — those
+  aren't "UI elements" for the purposes of this rule. `@expo/ui` is
+  already a `package.json` dependency (`~57.0.12`) but nothing under
+  `src/` imports it today; the existing screen/component files predate
+  this rule (e.g. `src/components/ui/collapsible.tsx` is a hand-rolled
+  equivalent of Universal's own `Collapsible`) and aren't being
+  retroactively rewritten — this applies going forward.
+- **React Compiler:** `experiments.reactCompiler` is `true` in `app.json`,
+  so components and hooks are auto-memoized at build time. Don't add
+  manual `useMemo`, `useCallback`, or `React.memo` as a default habit —
+  the compiler already does this; reach for them only if profiling shows
+  a specific case it doesn't handle.
 - **File naming:** kebab-case filenames throughout `src/` (e.g.
   `themed-text.tsx`, `use-color-scheme.ts`, `app-tabs.tsx`), not
   `PascalCase.tsx`. Follow this even though the exported component/hook
@@ -132,14 +166,35 @@ document doesn't silently overstate what's actually enforced.
   `animated-icon.web.tsx`, `app-tabs.web.tsx`, `use-color-scheme.web.ts` —
   rather than runtime `Platform.OS` branching inside a single file, when the
   divergence is large enough to warrant a separate file.
+- **Native prebuild:** `ios/` is a committed Expo prebuild output —
+  `Podfile`, `.xcworkspace`, and other generated Xcode project files are
+  checked into this repo. There is no equivalent `android/` directory;
+  only the iOS native project has been generated so far.
 - **Path aliases:** `@/*` resolves to `src/*` and `@/assets/*` to `assets/*`
   (see `tsconfig.json`'s `paths`) — use these instead of long relative
   `../../..` imports.
+- **Formatting:** no formatter is configured, and unlike the Angular
+  frontend (which at least has `.editorconfig`), this module has no
+  `.editorconfig` either — nothing constrains formatting today. The
+  observed convention in existing source (e.g. `themed-text.tsx`,
+  `external-link.tsx`) is 2-space indentation, single quotes, and trailing
+  commas in multiline literals, but nothing enforces it.
 - **Linting:** `npm run lint` runs `expo lint`. There is no repo-local
   ESLint config file in this module (no `.eslintrc*` or `eslint.config.js`)
-  — it relies entirely on Expo's bundled config, so linting behavior here
-  tracks whatever the installed `expo` version ships, not a config checked
-  into this repo.
+  — and more fundamentally, neither `eslint` nor `eslint-config-expo` is
+  present anywhere in `package.json`, `package-lock.json`, or
+  `node_modules/.bin` for this module; this isn't just "no local config,"
+  the packages themselves aren't installed. What `expo lint` actually does
+  about that on a fresh run — auto-install, interactive prompt, or
+  failure — hasn't been verified here, so don't assume this module is
+  actually being linted today without running the script yourself and
+  checking the outcome.
+- **Testing:** no test runner is configured. `package.json` has no `test`
+  script, no `jest.config.*` exists, and `jest`, `jest-expo`, and
+  `@testing-library/react-native` are all absent from `package-lock.json`
+  — not installed, not even transitively. There are no
+  `*.test.*`/`*.spec.*` files or `__tests__` directories anywhere in this
+  module today.
 
 ## Known gaps vs. the constitution
 
