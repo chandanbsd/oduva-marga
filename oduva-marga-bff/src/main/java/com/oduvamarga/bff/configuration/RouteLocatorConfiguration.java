@@ -17,11 +17,24 @@ public class RouteLocatorConfiguration {
 
     @Bean
     public RouteLocator customRouteLocator(RouteLocatorBuilder builder) {
+        final String pathRewriteRegex = "/bff/om/?(?<remaining>.*)";
+        final String pathRewriteReplacement = "/api/v1/${remaining}";
         return builder.routes()
+                .route("om-public-routes", r -> r
+                        .path(
+                                "/bff/om/student/register",
+                                "/bff/om/public/**"
+                        )
+                        .filters(f -> f
+                                .rewritePath(pathRewriteRegex, pathRewriteReplacement)
+                                .removeRequestHeader("Cookie")
+                        )
+                        .uri(odumargaUri)
+                )
                 .route("om-resource-server", r -> r
                         .path("/bff/om/**")
                         .filters(f -> f
-                                .rewritePath("/bff/om/?(?<remaining>.*)", "/api/v1/${remaining}")
+                                .rewritePath(pathRewriteRegex, pathRewriteReplacement)
                                 .tokenRelay()
                                 .removeRequestHeader("Cookie")
                         )
