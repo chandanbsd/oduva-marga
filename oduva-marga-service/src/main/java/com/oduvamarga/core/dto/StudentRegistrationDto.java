@@ -13,5 +13,7 @@ public record StudentRegistrationDto (
 
         @NotNull(message = "Email is required")
         @Email(message = "Invalid email format")
-        String personalEmail
+        String personalEmail,
+
+        String password
 ) {}

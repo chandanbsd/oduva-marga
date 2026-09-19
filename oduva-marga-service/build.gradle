@@ -37,6 +37,8 @@ dependencies {
 	annotationProcessor "org.mapstruct:mapstruct-processor:1.6.3"
     // docs
 	implementation "org.springdoc:springdoc-openapi-starter-webmvc-ui:3.1.0"
+	// keycloak
+	implementation "org.keycloak:keycloak-admin-client:26.0.12"
 
 
 	// testing

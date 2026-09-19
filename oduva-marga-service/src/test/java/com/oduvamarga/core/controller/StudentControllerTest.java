@@ -30,7 +30,9 @@ class StudentControllerTest {
         var student = new StudentRegistrationDto(
                 "first",
                 "last",
-                "per@gmail.com");
+                "per@gmail.com",
+                "passowrd"
+            );
 
         mvc.perform(post("/student/register")
                 .with(jwt())

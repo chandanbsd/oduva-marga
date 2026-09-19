@@ -1,5 +1,6 @@
 package com.oduvamarga.core.exception;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
@@ -27,5 +28,25 @@ public class GlobalExceptionHandler {
         problemDetail.setProperty("errors", errors);
 
         return new ResponseEntity<>(problemDetail, BAD_REQUEST);
+    }
+
+    public record ApiError(String code, String message, String filed) {}
+
+    @ExceptionHandler(DuplicateEmailException.class)
+    public ResponseEntity<ApiError> handleDuplicateEmail(DuplicateEmailException ex) {
+        ApiError error = new ApiError("DUPLICATE_EMAIL", ex.getMessage(), "email");
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+    }
+
+    @ExceptionHandler(DuplicateUsernameException.class)
+    public ResponseEntity<ApiError> handleDuplicateUsername(DuplicateUsernameException ex) {
+        ApiError error = new ApiError("DUPLICATE_USERNAME", ex.getMessage(), "username");
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+    }
+
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<ApiError> handleGenericConflict(IllegalStateException ex) {
+        ApiError error = new ApiError("REGISTRATION_CONFLICT", ex.getMessage(), "general");
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
     }
 }
