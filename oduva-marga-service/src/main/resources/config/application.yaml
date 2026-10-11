@@ -21,6 +21,14 @@ spring:
 
 server:
   port: ${SERVER_PORT:8082}
+  servlet:
+    context-path: /api/v1
+
+keycloak:
+  client-id: ${CLIENT_ID:oduvamarga-core}
+  client-secret: ${CLIENT_SECRET}
+  realm: ${KEYCLOAK_REALM:test}
+  serverUrl: ${KEYCLOAK_SERVER_URL:http://auth.om.local}
 
 management:
   endpoints:
@@ -31,3 +39,11 @@ management:
     health:
       probes:
         enabled: true
+
+springdoc:
+  swagger-ui:
+    path: /public/swagger-ui.html
+  api-docs:
+    path: /public/api-docs
+
+  

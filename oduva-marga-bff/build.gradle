@@ -18,10 +18,20 @@ repositories {
 }
 
 dependencies {
+	// 1. Enforces Spring Boot 4.1.0 versions across all core starters
+	implementation platform("org.springframework.boot:spring-boot-dependencies:4.1.0")
+
+	// 2. Enforces the companion Spring Cloud ecosystem versions
+	implementation platform("org.springframework.cloud:spring-cloud-dependencies:2025.1.2")
+	// spring
 	implementation('org.springframework.boot:spring-boot-starter-webflux')
-	implementation('org.springframework.boot:spring-boot-starter-oauth2-client')
 	implementation 'org.springframework.boot:spring-boot-starter'
 	implementation 'org.springframework.boot:spring-boot-starter-actuator'
+	// oauth2
+	implementation('org.springframework.boot:spring-boot-starter-oauth2-client')
+	// spring cloud
+	implementation 'org.springframework.cloud:spring-cloud-starter-gateway-server-webflux:5.0.2'
+
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }

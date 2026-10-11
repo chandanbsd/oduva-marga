@@ -12,13 +12,6 @@ spring:
         provider:
           keycloak:
             issuer-uri: ${ISSUER_URI:http://auth.om.local/realms/test}
-logging:
-  level:
-    org:
-      springframework:
-        security: TRACE
-        web: DEBUG
-        web.client.RestTemplate: DEBUG
 
 server:
   port: ${SERVER_PORT:8081}
@@ -36,4 +29,4 @@ management:
 # Set by Infrastructure/podman-compose.yml. Not yet wired into Spring Security —
 # placeholders for when the BFF's OAuth2 resource-server config is built out.
 oduva:
-  service-base-url: ${SERVICE_BASE_URL:http://localhost:8082}
+  service-base-url: ${SERVICE_BASE_URL:http://app.om.local}
