@@ -75,4 +75,13 @@ describe('EnrollmentApplicationStore', () => {
     expect(store.error()).toBeTruthy();
     expect(store.lastSubmission()).toBeNull();
   });
+
+  it('surfaces a server { message } (e.g. storage full) instead of the generic text', () => {
+    store.submit(validRequest);
+    httpMock
+      .expectOne('/api/enrollment-applications')
+      .flush({ message: 'Mock storage is full. Clear site data and retry.' }, { status: 413, statusText: 'Payload Too Large' });
+
+    expect(store.error()).toBe('Mock storage is full. Clear site data and retry.');
+  });
 });

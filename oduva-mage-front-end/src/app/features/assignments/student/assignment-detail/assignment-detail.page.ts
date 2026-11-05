@@ -38,6 +38,7 @@ export class StudentAssignmentDetailPageComponent {
   readonly submissionsLoaded = this.store.submissionsLoaded;
   readonly isSaving = this.store.isSaving;
   readonly error = this.store.error;
+  readonly notice = this.store.notice;
   readonly mySubmission = computed(() => this.store.submissions()[0] ?? null);
   readonly formatBytes = formatBytes;
 

@@ -23,6 +23,11 @@
     width: 100%;
   }
 
+  &__notice {
+    padding: 0.5rem 0.75rem;
+    border-left: 4px solid currentColor;
+  }
+
   &__error {
     color: var(--mat-sys-error, #b3261e);
   }

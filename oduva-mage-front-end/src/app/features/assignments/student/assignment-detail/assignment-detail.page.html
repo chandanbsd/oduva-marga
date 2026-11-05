@@ -5,6 +5,10 @@
     <p class="assignment-detail-page__error" role="alert">{{ error() }}</p>
   }
 
+  @if (notice()) {
+    <p class="assignment-detail-page__notice" role="status">{{ notice() }}</p>
+  }
+
   @if (assignment(); as current) {
     <h1>{{ current.title }}</h1>
     <p class="assignment-detail-page__question">{{ current.question }}</p>

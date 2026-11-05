@@ -217,6 +217,7 @@ describe('StudentAssignmentDetailPageComponent', () => {
     expect(el().querySelector('form')).toBeNull();
     expect(el().textContent).toContain('Earlier answer.');
     expect(el().querySelector('[role="alert"]')).toBeNull();
+    expect(el().querySelector('[role="status"]')?.textContent).toContain('showing your earlier answer');
   });
 
   it('disables the submit button while saving', () => {

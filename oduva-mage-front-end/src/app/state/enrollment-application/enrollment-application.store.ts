@@ -26,9 +26,12 @@ const initialState: EnrollmentApplicationState = {
 
 function extractErrorMessage(err: unknown): string {
   if (err instanceof HttpErrorResponse) {
-    const body = err.error as ValidationErrorResponse | undefined;
+    const body = err.error as (ValidationErrorResponse & { message?: string }) | undefined;
     if (body?.errors?.length) {
       return body.errors.map((e) => e.message).join(' ');
+    }
+    if (body?.message) {
+      return body.message;
     }
   }
   return 'Something went wrong submitting your application. Please try again.';

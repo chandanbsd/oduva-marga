@@ -2,7 +2,7 @@ import { HttpErrorResponse, HttpEvent, HttpRequest, HttpResponse } from '@angula
 import { Observable, of, throwError } from 'rxjs';
 import { delay } from 'rxjs/operators';
 
-import { MockApiStorage, readStorage, writeStorage } from '../mock-storage';
+import { MockApiStorage, STORAGE_FULL_MESSAGE, readStorage, tryWriteStorage } from '../mock-storage';
 import {
   Assignment,
   AssignmentSummary,
@@ -13,7 +13,6 @@ import {
 import { AuthenticatedUser } from '../../src/app/shared/models/auth.model';
 
 const SIMULATED_LATENCY_MS = 150;
-const STORAGE_FULL_MESSAGE = 'Mock storage is full. Clear site data and retry.';
 
 interface ValidationErrorEntry {
   field: string;
@@ -67,15 +66,7 @@ function validateAnswer(answer: Partial<SubmissionAnswer> | undefined): Validati
 
 /** Persists, mapping a full localStorage to the mock's 413; returns null on success. */
 function persist(storage: MockApiStorage, url: string): Observable<HttpEvent<unknown>> | null {
-  try {
-    writeStorage(storage);
-    return null;
-  } catch (err) {
-    if (err instanceof DOMException && err.name === 'QuotaExceededError') {
-      return fail(413, { message: STORAGE_FULL_MESSAGE }, url);
-    }
-    throw err;
-  }
+  return tryWriteStorage(storage) ? null : fail(413, { message: STORAGE_FULL_MESSAGE }, url);
 }
 
 /** Returns null when the request is not an assignments route, so the caller can fall through. */

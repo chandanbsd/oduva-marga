@@ -7,7 +7,7 @@ import {
 import { Observable, of, throwError } from 'rxjs';
 import { delay } from 'rxjs/operators';
 
-import { readStorage, writeStorage } from '../../../../mocks/mock-storage';
+import { STORAGE_FULL_MESSAGE, readStorage, tryWriteStorage } from '../../../../mocks/mock-storage';
 import { handleAssignmentsRequest } from '../../../../mocks/handlers/assignments.handler';
 import { usersFixture } from '../../../../mocks/fixtures/users.fixture';
 import { Address, EnrollmentApplication, EnrollmentType } from '../../shared/models/enrollment-application.model';
@@ -130,7 +130,11 @@ function handleSubmitEnrollmentApplication(url: string, body: unknown): Observab
     submittedAt
   };
   storage.applications.push(application);
-  writeStorage(storage);
+  if (!tryWriteStorage(storage)) {
+    return throwError(
+      () => new HttpErrorResponse({ status: 413, url, error: { message: STORAGE_FULL_MESSAGE } })
+    ).pipe(delay(SIMULATED_LATENCY_MS));
+  }
 
   return of(
     new HttpResponse({ status: 201, url, body: { id: application.id, submittedAt: application.submittedAt } })
@@ -157,7 +161,11 @@ function handleLogin(url: string, body: unknown): Observable<HttpEvent<unknown>>
   };
   const storage = readStorage();
   storage.session = user;
-  writeStorage(storage);
+  if (!tryWriteStorage(storage)) {
+    return throwError(
+      () => new HttpErrorResponse({ status: 413, url, error: { message: STORAGE_FULL_MESSAGE } })
+    ).pipe(delay(SIMULATED_LATENCY_MS));
+  }
 
   return of(new HttpResponse({ status: 200, url, body: { user } })).pipe(delay(SIMULATED_LATENCY_MS));
 }
@@ -165,7 +173,8 @@ function handleLogin(url: string, body: unknown): Observable<HttpEvent<unknown>>
 function handleLogout(url: string): Observable<HttpEvent<unknown>> {
   const storage = readStorage();
   storage.session = null;
-  writeStorage(storage);
+  // Best effort: the client clears its own session regardless, so a full store must not block logout.
+  tryWriteStorage(storage);
   return of(new HttpResponse({ status: 204, url })).pipe(delay(SIMULATED_LATENCY_MS));
 }
 

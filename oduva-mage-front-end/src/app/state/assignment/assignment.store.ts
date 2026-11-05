@@ -25,6 +25,8 @@ export interface AssignmentState {
   submissionsLoaded: boolean;
   status: AssignmentStatus;
   error: string | null;
+  /** Non-error information for the user, e.g. a duplicate submit resolved to the stored answer. */
+  notice: string | null;
   lastCreatedId: string | null;
 }
 
@@ -35,8 +37,11 @@ const initialState: AssignmentState = {
   submissionsLoaded: false,
   status: 'idle',
   error: null,
+  notice: null,
   lastCreatedId: null
 };
+
+const ALREADY_SUBMITTED_NOTICE = 'You had already submitted this assignment; showing your earlier answer.';
 
 const GENERIC_ERROR = 'Something went wrong. Please try again.';
 
@@ -103,7 +108,7 @@ export const AssignmentStore = signalStore(
       ),
       create: rxMethod<CreateAssignmentRequest>(
         pipe(
-          tap(() => patchState(store, { status: 'saving', error: null })),
+          tap(() => patchState(store, { status: 'saving', error: null, notice: null })),
           switchMap((request) =>
             createAssignment(http, request).pipe(
               tap((created) => patchState(store, { status: 'saved', lastCreatedId: created.id })),
@@ -114,7 +119,7 @@ export const AssignmentStore = signalStore(
       ),
       submit: rxMethod<{ assignmentId: string; answer: SubmissionAnswer }>(
         pipe(
-          tap(() => patchState(store, { status: 'saving', error: null })),
+          tap(() => patchState(store, { status: 'saving', error: null, notice: null })),
           switchMap(({ assignmentId, answer }) =>
             submitAnswer(http, assignmentId, { answer }).pipe(
               tap((submission) => patchState(store, { status: 'saved', submissions: [submission], submissionsLoaded: true })),
@@ -122,7 +127,13 @@ export const AssignmentStore = signalStore(
                 // Already submitted (double-click, second tab): show the stored answer instead of an error.
                 if (err instanceof HttpErrorResponse && err.status === 409) {
                   return listSubmissions(http, assignmentId).pipe(
-                    tap((submissions) => patchState(store, { submissions, submissionsLoaded: true, status: 'idle', error: null })),
+                    tap((submissions) => patchState(store, {
+                        submissions,
+                        submissionsLoaded: true,
+                        status: 'idle',
+                        error: null,
+                        notice: ALREADY_SUBMITTED_NOTICE
+                      })),
                     catchError(fail)
                   );
                 }
@@ -133,7 +144,7 @@ export const AssignmentStore = signalStore(
         )
       ),
       reset(): void {
-        patchState(store, { status: 'idle', error: null, lastCreatedId: null });
+        patchState(store, { status: 'idle', error: null, notice: null, lastCreatedId: null });
       }
     };
   })

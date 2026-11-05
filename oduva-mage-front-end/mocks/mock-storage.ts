@@ -6,6 +6,8 @@ import { EnrollmentApplication } from '../src/app/shared/models/enrollment-appli
 
 export const STORAGE_KEY = 'oduva-marga:mock-api:v1';
 
+export const STORAGE_FULL_MESSAGE = 'Mock storage is full. Clear site data and retry.';
+
 export interface MockApiStorage {
   applications: EnrollmentApplication[];
   session: AuthenticatedUser | null;
@@ -52,4 +54,20 @@ export function readStorage(): MockApiStorage {
 /** Lets `localStorage` errors (e.g. QuotaExceededError) propagate; handlers decide how to map them. */
 export function writeStorage(storage: MockApiStorage): void {
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(storage));
+}
+
+/**
+ * Like `writeStorage`, but returns false when localStorage is full (QuotaExceededError) so callers can
+ * answer 413 with `STORAGE_FULL_MESSAGE`; any other error still propagates.
+ */
+export function tryWriteStorage(storage: MockApiStorage): boolean {
+  try {
+    writeStorage(storage);
+    return true;
+  } catch (err) {
+    if (err instanceof DOMException && err.name === 'QuotaExceededError') {
+      return false;
+    }
+    throw err;
+  }
 }

@@ -42,6 +42,7 @@ describe('AssignmentStore', () => {
     expect(store.submissions()).toEqual([]);
     expect(store.error()).toBeNull();
     expect(store.lastCreatedId()).toBeNull();
+    expect(store.notice()).toBeNull();
     expect(store.submissionsLoaded()).toBeFalse();
   });
 
@@ -136,6 +137,7 @@ describe('AssignmentStore', () => {
     expect(store.submissions()).toEqual([submission]);
     expect(store.status()).toBe('idle');
     expect(store.error()).toBeNull();
+    expect(store.notice()).toBe('You had already submitted this assignment; showing your earlier answer.');
   });
 
   it('submit 400 surfaces the validation message', () => {

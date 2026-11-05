@@ -208,4 +208,33 @@ describe('mockApiInterceptor — auth handlers', () => {
 
     expect(response.user.role).toBe('student');
   });
+
+  it('returns 413 with a clear message when storage is full during enrollment submit', async () => {
+    const http = TestBed.inject(HttpClient);
+    await firstValueFrom(http.post('/api/auth/logout', {}));
+    spyOn(Storage.prototype, 'setItem').and.throwError(new DOMException('full', 'QuotaExceededError'));
+
+    try {
+      await firstValueFrom(http.post('/api/enrollment-applications', validApplicationRequest()));
+      fail('expected the request to be rejected');
+    } catch (err) {
+      expect((err as HttpErrorResponse).status).toBe(413);
+      expect((err as HttpErrorResponse).error).toEqual({
+        message: 'Mock storage is full. Clear site data and retry.'
+      });
+    }
+  });
+
+  it('returns 413 with a clear message when storage is full during login', async () => {
+    const http = TestBed.inject(HttpClient);
+    await firstValueFrom(http.post('/api/auth/logout', {}));
+    spyOn(Storage.prototype, 'setItem').and.throwError(new DOMException('full', 'QuotaExceededError'));
+
+    try {
+      await firstValueFrom(http.post('/api/auth/login', { email: 'jordan.taylor@example.com', password: 'MockPass123!' }));
+      fail('expected the request to be rejected');
+    } catch (err) {
+      expect((err as HttpErrorResponse).status).toBe(413);
+    }
+  });
 });
