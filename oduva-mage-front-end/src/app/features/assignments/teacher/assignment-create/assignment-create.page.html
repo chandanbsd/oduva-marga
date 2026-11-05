@@ -1,0 +1,26 @@
+<form [formGroup]="form" (ngSubmit)="onSubmit()" class="assignment-create-page">
+  <a routerLink="/teacher/assignments">Back to assignments</a>
+  <h1>New assignment</h1>
+
+  <mat-form-field appearance="outline" class="assignment-create-page__field">
+    <mat-label>Title</mat-label>
+    <input matInput formControlName="title" />
+    @if (form.controls.title.hasError('required')) {
+      <mat-error>Title is required.</mat-error>
+    }
+  </mat-form-field>
+
+  <mat-form-field appearance="outline" class="assignment-create-page__field">
+    <mat-label>Question</mat-label>
+    <textarea matInput rows="6" formControlName="question"></textarea>
+    @if (form.controls.question.hasError('required')) {
+      <mat-error>Question is required.</mat-error>
+    }
+  </mat-form-field>
+
+  @if (error()) {
+    <p class="assignment-create-page__error" role="alert">{{ error() }}</p>
+  }
+
+  <button mat-flat-button color="primary" type="submit" [disabled]="isSaving()">Create assignment</button>
+</form>

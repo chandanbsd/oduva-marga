@@ -2,6 +2,11 @@
   @if (user(); as currentUser) {
     <h1>Welcome, {{ currentUser.displayName }}</h1>
     <p>You are signed in as {{ currentUser.email }}.</p>
+    @if (currentUser.role === 'teacher') {
+      <a mat-flat-button color="primary" routerLink="/teacher/assignments">Manage assignments</a>
+    } @else {
+      <a mat-flat-button color="primary" routerLink="/student/assignments">My assignments</a>
+    }
     <button mat-stroked-button type="button" (click)="logout()">Log out</button>
   }
 </div>
