@@ -182,4 +182,59 @@ describe('mockApiInterceptor — auth handlers', () => {
     const storage = JSON.parse(raw as string) as { session: unknown };
     expect(storage.session).toBeNull();
   });
+
+  it('login returns role teacher for alex.morgan@example.com', async () => {
+    const http = TestBed.inject(HttpClient);
+
+    const response = await firstValueFrom(
+      http.post<{ user: { role: string } }>('/api/auth/login', {
+        email: 'alex.morgan@example.com',
+        password: 'MockPass789!'
+      })
+    );
+
+    expect(response.user.role).toBe('teacher');
+  });
+
+  it('login returns role student for jordan.taylor@example.com', async () => {
+    const http = TestBed.inject(HttpClient);
+
+    const response = await firstValueFrom(
+      http.post<{ user: { role: string } }>('/api/auth/login', {
+        email: 'jordan.taylor@example.com',
+        password: 'MockPass123!'
+      })
+    );
+
+    expect(response.user.role).toBe('student');
+  });
+
+  it('returns 413 with a clear message when storage is full during enrollment submit', async () => {
+    const http = TestBed.inject(HttpClient);
+    await firstValueFrom(http.post('/api/auth/logout', {}));
+    spyOn(Storage.prototype, 'setItem').and.throwError(new DOMException('full', 'QuotaExceededError'));
+
+    try {
+      await firstValueFrom(http.post('/api/enrollment-applications', validApplicationRequest()));
+      fail('expected the request to be rejected');
+    } catch (err) {
+      expect((err as HttpErrorResponse).status).toBe(413);
+      expect((err as HttpErrorResponse).error).toEqual({
+        message: 'Mock storage is full. Clear site data and retry.'
+      });
+    }
+  });
+
+  it('returns 413 with a clear message when storage is full during login', async () => {
+    const http = TestBed.inject(HttpClient);
+    await firstValueFrom(http.post('/api/auth/logout', {}));
+    spyOn(Storage.prototype, 'setItem').and.throwError(new DOMException('full', 'QuotaExceededError'));
+
+    try {
+      await firstValueFrom(http.post('/api/auth/login', { email: 'jordan.taylor@example.com', password: 'MockPass123!' }));
+      fail('expected the request to be rejected');
+    } catch (err) {
+      expect((err as HttpErrorResponse).status).toBe(413);
+    }
+  });
 });

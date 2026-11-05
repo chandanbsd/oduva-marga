@@ -1,0 +1,21 @@
+<section class="assignment-list-page">
+  <a routerLink="/home">Back to home</a>
+  <h1>My assignments</h1>
+
+  @if (error()) {
+    <p class="assignment-list-page__error" role="alert">{{ error() }}</p>
+  } @else if (!isLoading()) {
+    @if (assignments().length === 0) {
+      <p>No assignments yet.</p>
+    } @else {
+      <ul class="assignment-list-page__items">
+        @for (assignment of assignments(); track assignment.id) {
+          <li>
+            <a [routerLink]="['/student/assignments', assignment.id]">{{ assignment.title }}</a>
+            <span class="assignment-list-page__state">{{ assignment.submitted ? 'Submitted' : 'Not submitted' }}</span>
+          </li>
+        }
+      </ul>
+    }
+  }
+</section>

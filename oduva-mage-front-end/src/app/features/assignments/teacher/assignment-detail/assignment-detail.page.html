@@ -1,0 +1,54 @@
+<section class="assignment-detail-page">
+  <a routerLink="/teacher/assignments">Back to assignments</a>
+
+  @if (error()) {
+    <p class="assignment-detail-page__error" role="alert">{{ error() }}</p>
+  }
+
+  @if (assignment(); as current) {
+    <h1>{{ current.title }}</h1>
+    <p class="assignment-detail-page__question">{{ current.question }}</p>
+    <p>Maximum marks: {{ current.maxMarks }}</p>
+
+    <h2>Submissions</h2>
+    @if (submissions().length === 0) {
+      <p>No submissions yet.</p>
+    } @else {
+      <ul class="assignment-detail-page__submissions">
+        @for (submission of submissions(); track submission.id) {
+          <li>
+            <strong>{{ submission.studentName }}</strong>
+            <span> · {{ submission.submittedAt | date: 'medium' }}</span>
+            @if (submission.answer.kind === 'text') {
+              <p class="assignment-detail-page__text">{{ submission.answer.text }}</p>
+            } @else {
+              <p>
+                {{ submission.answer.fileName }} ({{ formatBytes(submission.answer.sizeBytes) }})
+                <button mat-stroked-button type="button" (click)="download(submission.answer)">Download</button>
+              </p>
+            }
+            <div class="assignment-detail-page__grade">
+              <label>
+                Grade for {{ submission.studentName }}
+                <input
+                  type="number"
+                  step="any"
+                  min="0"
+                  [value]="draft(submission)"
+                  (input)="onDraftInput(submission.id, $event)"
+                />
+              </label>
+              <button mat-stroked-button type="button" (click)="saveGrade(submission)">Save grade</button>
+            </div>
+            @if (gradeErrors()[submission.id]) {
+              <p class="assignment-detail-page__error" role="alert">{{ gradeErrors()[submission.id] }}</p>
+            }
+            @if (submission.grade !== undefined) {
+              <p>Graded: {{ submission.grade }} / {{ current.maxMarks }}</p>
+            }
+          </li>
+        }
+      </ul>
+    }
+  }
+</section>

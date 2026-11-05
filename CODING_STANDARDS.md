@@ -108,6 +108,16 @@ document doesn't silently overstate what's actually enforced.
 - **Testing:** Karma + Jasmine for unit tests (`npm run test`), Playwright
   for e2e specs under `e2e/*.spec.ts` (`npm run e2e`, which builds against
   the `mock` configuration first).
+- **Mock API layout:** the mock backend lives outside `src/` in
+  `oduva-mage-front-end/mocks/` (`fixtures/`, `handlers/<feature>.handler.ts`,
+  shared `mock-storage.ts`), wired through
+  `src/app/core/interceptors/mock-api.interceptor.ts`. Karma only discovers
+  specs under `src/`, so specs for `mocks/` code live beside the interceptor
+  in `src/app/core/interceptors/` and import from `../../../../mocks/...`.
+  Small cross-feature helpers go in `src/app/shared/util/`.
+- **e2e navigation:** the auth store is memory-only, so a full page load
+  logs the user out. After logging in, e2e tests move between protected
+  routes by clicking links, never `page.goto`.
 - **Layering:** the frontend calls only the BFF, never the core service
   directly, and holds no business logic beyond presentation/view-state
   (constitution Principle II).

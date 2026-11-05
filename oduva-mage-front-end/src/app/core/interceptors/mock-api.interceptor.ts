@@ -7,50 +7,19 @@ import {
 import { Observable, of, throwError } from 'rxjs';
 import { delay } from 'rxjs/operators';
 
-import { enrollmentApplicationsFixture } from '../../../../mocks/fixtures/enrollment-applications.fixture';
+import { STORAGE_FULL_MESSAGE, readStorage, tryWriteStorage } from '../../../../mocks/mock-storage';
+import { handleAssignmentsRequest } from '../../../../mocks/handlers/assignments.handler';
 import { usersFixture } from '../../../../mocks/fixtures/users.fixture';
 import { Address, EnrollmentApplication, EnrollmentType } from '../../shared/models/enrollment-application.model';
 import { AuthenticatedUser } from '../../shared/models/auth.model';
 
-const STORAGE_KEY = 'oduva-marga:mock-api:v1';
 const SIMULATED_LATENCY_MS = 150;
 const MAX_ADDITIONAL_ADDRESSES = 5;
 const GENERIC_LOGIN_ERROR_MESSAGE = 'Invalid email or password.';
 
-interface MockApiStorage {
-  applications: EnrollmentApplication[];
-  session: AuthenticatedUser | null;
-}
-
 interface ValidationErrorEntry {
   field: string;
   message: string;
-}
-
-function readStorage(): MockApiStorage {
-  const raw = window.localStorage.getItem(STORAGE_KEY);
-  if (!raw) {
-    const seeded: MockApiStorage = {
-      applications: [...enrollmentApplicationsFixture],
-      session: null
-    };
-    writeStorage(seeded);
-    return seeded;
-  }
-  try {
-    return JSON.parse(raw) as MockApiStorage;
-  } catch {
-    const seeded: MockApiStorage = {
-      applications: [...enrollmentApplicationsFixture],
-      session: null
-    };
-    writeStorage(seeded);
-    return seeded;
-  }
-}
-
-function writeStorage(storage: MockApiStorage): void {
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(storage));
 }
 
 function isBlank(value: unknown): boolean {
@@ -161,7 +130,11 @@ function handleSubmitEnrollmentApplication(url: string, body: unknown): Observab
     submittedAt
   };
   storage.applications.push(application);
-  writeStorage(storage);
+  if (!tryWriteStorage(storage)) {
+    return throwError(
+      () => new HttpErrorResponse({ status: 413, url, error: { message: STORAGE_FULL_MESSAGE } })
+    ).pipe(delay(SIMULATED_LATENCY_MS));
+  }
 
   return of(
     new HttpResponse({ status: 201, url, body: { id: application.id, submittedAt: application.submittedAt } })
@@ -183,11 +156,16 @@ function handleLogin(url: string, body: unknown): Observable<HttpEvent<unknown>>
   const user: AuthenticatedUser = {
     email: match.email,
     displayName: match.displayName,
+    role: match.role,
     authenticatedAt: new Date().toISOString()
   };
   const storage = readStorage();
   storage.session = user;
-  writeStorage(storage);
+  if (!tryWriteStorage(storage)) {
+    return throwError(
+      () => new HttpErrorResponse({ status: 413, url, error: { message: STORAGE_FULL_MESSAGE } })
+    ).pipe(delay(SIMULATED_LATENCY_MS));
+  }
 
   return of(new HttpResponse({ status: 200, url, body: { user } })).pipe(delay(SIMULATED_LATENCY_MS));
 }
@@ -195,11 +173,16 @@ function handleLogin(url: string, body: unknown): Observable<HttpEvent<unknown>>
 function handleLogout(url: string): Observable<HttpEvent<unknown>> {
   const storage = readStorage();
   storage.session = null;
-  writeStorage(storage);
+  // Best effort: the client clears its own session regardless, so a full store must not block logout.
+  tryWriteStorage(storage);
   return of(new HttpResponse({ status: 204, url })).pipe(delay(SIMULATED_LATENCY_MS));
 }
 
 export const mockApiInterceptor: HttpInterceptorFn = (req, next) => {
+  const assignments = handleAssignmentsRequest(req);
+  if (assignments) {
+    return assignments;
+  }
   if (req.method === 'POST' && req.url.endsWith('/enrollment-applications')) {
     return handleSubmitEnrollmentApplication(req.url, req.body);
   }

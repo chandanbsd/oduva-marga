@@ -1,0 +1,262 @@
+openapi: 3.0.3
+info:
+  title: Oduva Marga Assignments API (frontend mock <-> future BFF)
+  version: 0.1.0
+  description: >
+    Contract for teacher-created single-question assignments and student
+    submissions (typed text OR one uploaded file). Implemented today by the
+    frontend mock interceptor; the BFF will implement the same shapes later.
+    Roles: `teacher` creates assignments and reads all submissions; `student`
+    submits once per assignment and reads only their own submissions.
+servers:
+  - url: /api
+security:
+  - sessionAuth: []
+paths:
+  /assignments:
+    get:
+      operationId: listAssignments
+      summary: List assignments
+      description: >
+        Any authenticated role. For students each item carries `submitted`
+        (whether the caller has submitted); for teachers it is omitted.
+      responses:
+        '200':
+          description: Assignments
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/AssignmentSummary' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+    post:
+      operationId: createAssignment
+      summary: Create an assignment (teacher only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateAssignmentRequest' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Assignment' }
+        '400': { $ref: '#/components/responses/ValidationFailed' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '413': { $ref: '#/components/responses/StorageFull' }
+  /assignments/{id}:
+    parameters:
+      - $ref: '#/components/parameters/AssignmentId'
+    get:
+      operationId: getAssignment
+      summary: Get one assignment
+      responses:
+        '200':
+          description: The assignment
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Assignment' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /assignments/{id}/submissions:
+    parameters:
+      - $ref: '#/components/parameters/AssignmentId'
+    get:
+      operationId: listSubmissions
+      summary: List submissions
+      description: Teacher receives all submissions; student receives only their own.
+      responses:
+        '200':
+          description: Submissions
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Submission' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    post:
+      operationId: submitAnswer
+      summary: Submit an answer (student only, once per assignment)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SubmitAnswerRequest' }
+      responses:
+        '201':
+          description: Submitted
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Submission' }
+        '400': { $ref: '#/components/responses/ValidationFailed' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: The caller already submitted this assignment
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorMessage' }
+        '413': { $ref: '#/components/responses/StorageFull' }
+  /assignments/{id}/submissions/{submissionId}/grade:
+    parameters:
+      - $ref: '#/components/parameters/AssignmentId'
+      - name: submissionId
+        in: path
+        required: true
+        schema: { type: string }
+    put:
+      operationId: gradeSubmission
+      summary: Grade a submission (teacher only; replaces any earlier grade)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/GradeRequest' }
+      responses:
+        '200':
+          description: The graded submission
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Submission' }
+        '400': { $ref: '#/components/responses/ValidationFailed' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '413': { $ref: '#/components/responses/StorageFull' }
+components:
+  securitySchemes:
+    sessionAuth:
+      type: apiKey
+      in: cookie
+      name: session
+      description: Authenticated session established via POST /auth/login.
+  parameters:
+    AssignmentId:
+      name: id
+      in: path
+      required: true
+      schema: { type: string }
+  responses:
+    ValidationFailed:
+      description: Field validation failed
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ValidationError' }
+    Unauthenticated:
+      description: No session
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorMessage' }
+    Forbidden:
+      description: Wrong role for this operation
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorMessage' }
+    NotFound:
+      description: Unknown assignment
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorMessage' }
+    StorageFull:
+      description: Mock storage quota exceeded (mock only)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorMessage' }
+  schemas:
+    Assignment:
+      type: object
+      required: [id, title, question, maxMarks, createdAt, createdByEmail]
+      properties:
+        id: { type: string }
+        title: { type: string }
+        question: { type: string }
+        maxMarks: { type: number, exclusiveMinimum: true, minimum: 0, description: Maximum marks; fractions allowed. }
+        createdAt: { type: string, format: date-time }
+        createdByEmail: { type: string }
+    AssignmentSummary:
+      allOf:
+        - $ref: '#/components/schemas/Assignment'
+        - type: object
+          properties:
+            submitted:
+              type: boolean
+              description: Present only when the caller is a student.
+    CreateAssignmentRequest:
+      type: object
+      required: [title, question, maxMarks]
+      properties:
+        title: { type: string, minLength: 1 }
+        question: { type: string, minLength: 1 }
+        maxMarks: { type: number, exclusiveMinimum: true, minimum: 0 }
+    TextAnswer:
+      type: object
+      required: [kind, text]
+      properties:
+        kind: { type: string, enum: [text] }
+        text: { type: string, minLength: 1 }
+    FileAnswer:
+      type: object
+      required: [kind, fileName, mimeType, sizeBytes, dataUrl]
+      properties:
+        kind: { type: string, enum: [file] }
+        fileName: { type: string, minLength: 1 }
+        mimeType: { type: string }
+        sizeBytes: { type: integer, minimum: 1, maximum: 1048576 }
+        dataUrl:
+          type: string
+          description: "`data:<mime>;base64,<payload>`"
+    SubmissionAnswer:
+      oneOf:
+        - $ref: '#/components/schemas/TextAnswer'
+        - $ref: '#/components/schemas/FileAnswer'
+      discriminator:
+        propertyName: kind
+        mapping:
+          text: '#/components/schemas/TextAnswer'
+          file: '#/components/schemas/FileAnswer'
+    SubmitAnswerRequest:
+      type: object
+      required: [answer]
+      properties:
+        answer: { $ref: '#/components/schemas/SubmissionAnswer' }
+    Submission:
+      type: object
+      required: [id, assignmentId, studentEmail, studentName, submittedAt, answer]
+      properties:
+        id: { type: string }
+        assignmentId: { type: string }
+        studentEmail: { type: string }
+        studentName: { type: string }
+        submittedAt: { type: string, format: date-time }
+        answer: { $ref: '#/components/schemas/SubmissionAnswer' }
+        grade:
+          type: number
+          minimum: 0
+          description: Marks awarded by the teacher (at most the assignment's maxMarks); absent until graded.
+    GradeRequest:
+      type: object
+      required: [marks]
+      properties:
+        marks: { type: number, minimum: 0, description: Must not exceed the assignment's maxMarks. }
+    ValidationError:
+      type: object
+      required: [errors]
+      properties:
+        errors:
+          type: array
+          items:
+            type: object
+            required: [field, message]
+            properties:
+              field: { type: string }
+              message: { type: string }
+    ErrorMessage:
+      type: object
+      required: [message]
+      properties:
+        message: { type: string }

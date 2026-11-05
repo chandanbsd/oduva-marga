@@ -1,0 +1,19 @@
+<section class="assignment-list-page">
+  <a routerLink="/home">Back to home</a>
+  <h1>Assignments</h1>
+  <a mat-flat-button color="primary" routerLink="/teacher/assignments/new">New assignment</a>
+
+  @if (error()) {
+    <p class="assignment-list-page__error" role="alert">{{ error() }}</p>
+  } @else if (!isLoading()) {
+    @if (assignments().length === 0) {
+      <p>No assignments yet.</p>
+    } @else {
+      <ul class="assignment-list-page__items">
+        @for (assignment of assignments(); track assignment.id) {
+          <li><a [routerLink]="['/teacher/assignments', assignment.id]">{{ assignment.title }}</a></li>
+        }
+      </ul>
+    }
+  }
+</section>
