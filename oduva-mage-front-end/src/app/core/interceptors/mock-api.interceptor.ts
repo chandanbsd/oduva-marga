@@ -7,50 +7,18 @@ import {
 import { Observable, of, throwError } from 'rxjs';
 import { delay } from 'rxjs/operators';
 
-import { enrollmentApplicationsFixture } from '../../../../mocks/fixtures/enrollment-applications.fixture';
+import { readStorage, writeStorage } from '../../../../mocks/mock-storage';
 import { usersFixture } from '../../../../mocks/fixtures/users.fixture';
 import { Address, EnrollmentApplication, EnrollmentType } from '../../shared/models/enrollment-application.model';
 import { AuthenticatedUser } from '../../shared/models/auth.model';
 
-const STORAGE_KEY = 'oduva-marga:mock-api:v1';
 const SIMULATED_LATENCY_MS = 150;
 const MAX_ADDITIONAL_ADDRESSES = 5;
 const GENERIC_LOGIN_ERROR_MESSAGE = 'Invalid email or password.';
 
-interface MockApiStorage {
-  applications: EnrollmentApplication[];
-  session: AuthenticatedUser | null;
-}
-
 interface ValidationErrorEntry {
   field: string;
   message: string;
-}
-
-function readStorage(): MockApiStorage {
-  const raw = window.localStorage.getItem(STORAGE_KEY);
-  if (!raw) {
-    const seeded: MockApiStorage = {
-      applications: [...enrollmentApplicationsFixture],
-      session: null
-    };
-    writeStorage(seeded);
-    return seeded;
-  }
-  try {
-    return JSON.parse(raw) as MockApiStorage;
-  } catch {
-    const seeded: MockApiStorage = {
-      applications: [...enrollmentApplicationsFixture],
-      session: null
-    };
-    writeStorage(seeded);
-    return seeded;
-  }
-}
-
-function writeStorage(storage: MockApiStorage): void {
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(storage));
 }
 
 function isBlank(value: unknown): boolean {
