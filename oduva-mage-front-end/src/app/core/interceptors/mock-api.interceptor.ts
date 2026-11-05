@@ -8,6 +8,7 @@ import { Observable, of, throwError } from 'rxjs';
 import { delay } from 'rxjs/operators';
 
 import { readStorage, writeStorage } from '../../../../mocks/mock-storage';
+import { handleAssignmentsRequest } from '../../../../mocks/handlers/assignments.handler';
 import { usersFixture } from '../../../../mocks/fixtures/users.fixture';
 import { Address, EnrollmentApplication, EnrollmentType } from '../../shared/models/enrollment-application.model';
 import { AuthenticatedUser } from '../../shared/models/auth.model';
@@ -169,6 +170,10 @@ function handleLogout(url: string): Observable<HttpEvent<unknown>> {
 }
 
 export const mockApiInterceptor: HttpInterceptorFn = (req, next) => {
+  const assignments = handleAssignmentsRequest(req);
+  if (assignments) {
+    return assignments;
+  }
   if (req.method === 'POST' && req.url.endsWith('/enrollment-applications')) {
     return handleSubmitEnrollmentApplication(req.url, req.body);
   }
