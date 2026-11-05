@@ -1,0 +1,34 @@
+<section class="assignment-detail-page">
+  <a routerLink="/teacher/assignments">Back to assignments</a>
+
+  @if (error()) {
+    <p class="assignment-detail-page__error" role="alert">{{ error() }}</p>
+  }
+
+  @if (assignment(); as current) {
+    <h1>{{ current.title }}</h1>
+    <p class="assignment-detail-page__question">{{ current.question }}</p>
+
+    <h2>Submissions</h2>
+    @if (submissions().length === 0) {
+      <p>No submissions yet.</p>
+    } @else {
+      <ul class="assignment-detail-page__submissions">
+        @for (submission of submissions(); track submission.id) {
+          <li>
+            <strong>{{ submission.studentName }}</strong>
+            <span> · {{ submission.submittedAt | date: 'medium' }}</span>
+            @if (submission.answer.kind === 'text') {
+              <p class="assignment-detail-page__text">{{ submission.answer.text }}</p>
+            } @else {
+              <p>
+                {{ submission.answer.fileName }} ({{ formatBytes(submission.answer.sizeBytes) }})
+                <button mat-stroked-button type="button" (click)="download(submission.answer)">Download</button>
+              </p>
+            }
+          </li>
+        }
+      </ul>
+    }
+  }
+</section>
