@@ -183,6 +183,7 @@ function handleLogin(url: string, body: unknown): Observable<HttpEvent<unknown>>
   const user: AuthenticatedUser = {
     email: match.email,
     displayName: match.displayName,
+    role: match.role,
     authenticatedAt: new Date().toISOString()
   };
   const storage = readStorage();

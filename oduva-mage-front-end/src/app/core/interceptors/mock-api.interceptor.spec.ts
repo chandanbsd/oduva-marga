@@ -182,4 +182,30 @@ describe('mockApiInterceptor — auth handlers', () => {
     const storage = JSON.parse(raw as string) as { session: unknown };
     expect(storage.session).toBeNull();
   });
+
+  it('login returns role teacher for alex.morgan@example.com', async () => {
+    const http = TestBed.inject(HttpClient);
+
+    const response = await firstValueFrom(
+      http.post<{ user: { role: string } }>('/api/auth/login', {
+        email: 'alex.morgan@example.com',
+        password: 'MockPass789!'
+      })
+    );
+
+    expect(response.user.role).toBe('teacher');
+  });
+
+  it('login returns role student for jordan.taylor@example.com', async () => {
+    const http = TestBed.inject(HttpClient);
+
+    const response = await firstValueFrom(
+      http.post<{ user: { role: string } }>('/api/auth/login', {
+        email: 'jordan.taylor@example.com',
+        password: 'MockPass123!'
+      })
+    );
+
+    expect(response.user.role).toBe('student');
+  });
 });

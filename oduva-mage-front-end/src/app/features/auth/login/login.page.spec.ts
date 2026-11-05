@@ -34,6 +34,7 @@ describe('LoginPageComponent', () => {
       user: {
         email: 'jordan.taylor@example.com',
         displayName: 'Jordan Taylor',
+        role: 'student',
         authenticatedAt: '2026-01-01T00:00:00.000Z'
       }
     });
