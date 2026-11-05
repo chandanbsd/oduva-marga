@@ -18,7 +18,7 @@ async function logout(page: Page): Promise<void> {
 }
 
 test.describe('Assignments', () => {
-  test('teacher creates; two students submit text and a file; teacher sees both', async ({ page }) => {
+  test('teacher creates; students submit; teacher grades; student sees the grade', async ({ page }) => {
     const title = `Essay ${Date.now()}`;
 
     await login(page, TEACHER);
@@ -26,6 +26,7 @@ test.describe('Assignments', () => {
     await page.getByRole('link', { name: 'New assignment' }).click();
     await page.getByLabel('Title').fill(title);
     await page.getByLabel('Question').fill('Describe your favourite book.');
+    await page.getByLabel('Maximum marks').fill('10');
     await page.getByRole('button', { name: 'Create assignment' }).click();
     await expect(page.getByRole('link', { name: title })).toBeVisible();
     await page.getByRole('link', { name: 'Back to home' }).click();
@@ -60,12 +61,28 @@ test.describe('Assignments', () => {
     await login(page, TEACHER);
     await page.getByRole('link', { name: 'Manage assignments' }).click();
     await page.getByRole('link', { name: title }).click();
-    await expect(page.getByText('Jordan Taylor')).toBeVisible();
+    await expect(page.getByText('Jordan Taylor', { exact: true })).toBeVisible();
     await expect(page.getByText('Dune is my favourite.')).toBeVisible();
-    await expect(page.getByText('Sam Rivera')).toBeVisible();
+    await expect(page.getByText('Sam Rivera', { exact: true })).toBeVisible();
     const downloadPromise = page.waitForEvent('download');
     await page.getByRole('button', { name: 'Download' }).click();
     expect((await downloadPromise).suggestedFilename()).toBe('notes.txt');
+
+    await page.getByLabel('Grade for Jordan Taylor').fill('7.5');
+    await page
+      .getByRole('listitem')
+      .filter({ hasText: 'Jordan Taylor' })
+      .getByRole('button', { name: 'Save grade' })
+      .click();
+    await expect(page.getByText('Graded: 7.5 / 10')).toBeVisible();
+    await page.getByRole('link', { name: 'Back to assignments' }).click();
+    await page.getByRole('link', { name: 'Back to home' }).click();
+    await logout(page);
+
+    await login(page, JORDAN);
+    await page.getByRole('link', { name: 'My assignments' }).click();
+    await page.getByRole('link', { name: title }).click();
+    await expect(page.getByText('Grade: 7.5 / 10')).toBeVisible();
   });
 
   test("a student's landing page links only to student assignments", async ({ page }) => {

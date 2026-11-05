@@ -15,6 +15,13 @@ export interface MockApiStorage {
   submissions: Submission[];
 }
 
+/** Assignments stored before marks existed get a default of 100 so old browser data keeps working. */
+const LEGACY_DEFAULT_MAX_MARKS = 100;
+
+function withMaxMarks(assignment: Assignment): Assignment {
+  return assignment.maxMarks === undefined ? { ...assignment, maxMarks: LEGACY_DEFAULT_MAX_MARKS } : assignment;
+}
+
 function seed(): MockApiStorage {
   return {
     applications: [...enrollmentApplicationsFixture],
@@ -36,11 +43,11 @@ export function readStorage(): MockApiStorage {
     const upgraded: MockApiStorage = {
       applications: parsed.applications ?? [...enrollmentApplicationsFixture],
       session: parsed.session ?? null,
-      assignments: parsed.assignments ?? [...assignmentsFixture],
+      assignments: (parsed.assignments ?? [...assignmentsFixture]).map(withMaxMarks),
       submissions: parsed.submissions ?? [...submissionsFixture]
     };
     // Written by the pre-assignments mock: persist the upgrade so later reads are stable.
-    if (!parsed.assignments || !parsed.submissions) {
+    if (!parsed.assignments || !parsed.submissions || parsed.assignments.some((a) => a.maxMarks === undefined)) {
       writeStorage(upgraded);
     }
     return upgraded;

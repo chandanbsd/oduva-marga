@@ -45,7 +45,7 @@ describe('assignments mock handler', () => {
   }
 
   const create = () =>
-    firstValueFrom(http.post<Assignment>('/api/assignments', { title: 'T', question: 'Q' }));
+    firstValueFrom(http.post<Assignment>('/api/assignments', { title: 'T', question: 'Q', maxMarks: 10 }));
   const submit = (id: string, answer: SubmissionAnswer) =>
     firstValueFrom(http.post<Submission>(`/api/assignments/${id}/submissions`, { answer }));
 
@@ -63,6 +63,7 @@ describe('assignments mock handler', () => {
 
     expect(created.id).toBeTruthy();
     expect(created.title).toBe('T');
+    expect(created.maxMarks).toBe(10);
     expect(created.createdByEmail).toBe('alex.morgan@example.com');
     expect(list.some((a) => a.id === created.id)).toBeTrue();
   });
@@ -76,7 +77,7 @@ describe('assignments mock handler', () => {
   it('returns 400 field errors for blank title and question', async () => {
     await login(TEACHER);
 
-    const err = await failure(firstValueFrom(http.post('/api/assignments', { title: '   ', question: '' })));
+    const err = await failure(firstValueFrom(http.post('/api/assignments', { title: '   ', question: '', maxMarks: 10 })));
 
     expect(err.status).toBe(400);
     expect((err.error.errors as Array<{ field: string }>).map((e) => e.field)).toEqual(['title', 'question']);
@@ -227,5 +228,88 @@ describe('assignments mock handler', () => {
 
     expect(err.status).toBe(413);
     expect(err.error).toEqual({ message: 'Mock storage is full. Clear site data and retry.' });
+  });
+
+  it('rejects a missing, zero, negative or non-numeric maxMarks with a 400 on maxMarks', async () => {
+    await login(TEACHER);
+
+    for (const maxMarks of [undefined, 0, -5, 'abc', null]) {
+      const err = await failure(firstValueFrom(http.post('/api/assignments', { title: 'T', question: 'Q', maxMarks })));
+      expect(err.status).toBe(400);
+      expect(err.error.errors.map((e: { field: string }) => e.field)).toEqual(['maxMarks']);
+    }
+  });
+
+  it('accepts a fractional maxMarks', async () => {
+    await login(TEACHER);
+
+    const created = await firstValueFrom(
+      http.post<Assignment>('/api/assignments', { title: 'T', question: 'Q', maxMarks: 12.5 })
+    );
+
+    expect(created.maxMarks).toBe(12.5);
+  });
+
+  describe('grading', () => {
+    let assignmentId: string;
+    let submissionId: string;
+
+    beforeEach(async () => {
+      await login(TEACHER);
+      assignmentId = (await create()).id;
+      await login(STUDENT);
+      submissionId = (await submit(assignmentId, { kind: 'text', text: 'answer' })).id;
+      await login(TEACHER);
+    });
+
+    const grade = (marks: unknown, id = submissionId, assignment = assignmentId) =>
+      firstValueFrom(http.put<Submission>(`/api/assignments/${assignment}/submissions/${id}/grade`, { marks }));
+
+    it('lets a teacher grade with a fraction; teacher and the student both see it', async () => {
+      const graded = await grade(7.5);
+
+      expect(graded.grade).toBe(7.5);
+      const all = await firstValueFrom(http.get<Submission[]>(`/api/assignments/${assignmentId}/submissions`));
+      expect(all[0].grade).toBe(7.5);
+      await login(STUDENT);
+      const own = await firstValueFrom(http.get<Submission[]>(`/api/assignments/${assignmentId}/submissions`));
+      expect(own[0].grade).toBe(7.5);
+    });
+
+    it('accepts the boundaries 0 and maxMarks', async () => {
+      expect((await grade(0)).grade).toBe(0);
+      expect((await grade(10)).grade).toBe(10);
+    });
+
+    it('replaces an earlier grade', async () => {
+      await grade(3);
+
+      expect((await grade(9)).grade).toBe(9);
+    });
+
+    it('rejects marks above maxMarks, negative, or non-numeric with a 400 on marks', async () => {
+      for (const marks of [10.5, -1, 'abc', null, undefined]) {
+        const err = await failure(grade(marks));
+        expect(err.status).toBe(400);
+        expect(err.error.errors[0].field).toBe('marks');
+      }
+    });
+
+    it('forbids a student from grading (403)', async () => {
+      await login(STUDENT);
+
+      expect((await failure(grade(5))).status).toBe(403);
+    });
+
+    it('returns 404 for an unknown submission or assignment', async () => {
+      expect((await failure(grade(5, 'nope'))).status).toBe(404);
+      expect((await failure(grade(5, submissionId, 'nope'))).status).toBe(404);
+    });
+
+    it('returns 413 when localStorage is full', async () => {
+      spyOn(Storage.prototype, 'setItem').and.throwError(new DOMException('full', 'QuotaExceededError'));
+
+      expect((await failure(grade(5))).status).toBe(413);
+    });
   });
 });

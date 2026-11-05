@@ -22,6 +22,11 @@
         } @else {
           <p>{{ submission.answer.fileName }} ({{ formatBytes(submission.answer.sizeBytes) }})</p>
         }
+        @if (submission.grade !== undefined) {
+          <p>Grade: {{ submission.grade }} / {{ current.maxMarks }}</p>
+        } @else {
+          <p>Not graded yet.</p>
+        }
       } @else {
         <form [formGroup]="form" (ngSubmit)="onSubmit()" class="assignment-detail-page__form">
           <mat-button-toggle-group aria-label="How to respond" [value]="mode()" (change)="mode.set($event.value)">

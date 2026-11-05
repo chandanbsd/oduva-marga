@@ -22,6 +22,20 @@ describe('mock-storage', () => {
     expect(storage.submissions).toEqual([]);
   });
 
+  it('defaults maxMarks to 100 for stored assignments that predate it', () => {
+    const legacy = { id: 'old', title: 'T', question: 'Q', createdAt: 'x', createdByEmail: 'y' };
+    window.localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ applications: [], session: null, assignments: [legacy], submissions: [] })
+    );
+
+    expect(readStorage().assignments[0].maxMarks).toBe(100);
+  });
+
+  it('seeds every fixture assignment with a positive maxMarks', () => {
+    expect(assignmentsFixture.every((a) => a.maxMarks > 0)).toBeTrue();
+  });
+
   it('upgrades without losing existing applications', () => {
     const application = { id: 'app-1' };
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ applications: [application], session: null }));

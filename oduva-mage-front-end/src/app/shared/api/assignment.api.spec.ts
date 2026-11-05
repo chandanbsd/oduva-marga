@@ -5,6 +5,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import {
   createAssignment,
   getAssignment,
+  gradeSubmission,
   listAssignments,
   listSubmissions,
   submitAnswer
@@ -33,15 +34,22 @@ describe('assignment.api', () => {
   });
 
   it('createAssignment POSTs /api/assignments with the request body', () => {
-    createAssignment(http, { title: 'T', question: 'Q' }).subscribe();
+    createAssignment(http, { title: 'T', question: 'Q', maxMarks: 10 }).subscribe();
     const req = httpMock.expectOne('/api/assignments');
     expect(req.request.method).toBe('POST');
-    expect(req.request.body).toEqual({ title: 'T', question: 'Q' });
+    expect(req.request.body).toEqual({ title: 'T', question: 'Q', maxMarks: 10 });
   });
 
   it('listSubmissions GETs /api/assignments/a1/submissions', () => {
     listSubmissions(http, 'a1').subscribe();
     expect(httpMock.expectOne('/api/assignments/a1/submissions').request.method).toBe('GET');
+  });
+
+  it('gradeSubmission PUTs /api/assignments/a1/submissions/s1/grade with {marks}', () => {
+    gradeSubmission(http, 'a1', 's1', 7.5).subscribe();
+    const req = httpMock.expectOne('/api/assignments/a1/submissions/s1/grade');
+    expect(req.request.method).toBe('PUT');
+    expect(req.request.body).toEqual({ marks: 7.5 });
   });
 
   it('submitAnswer POSTs /api/assignments/a1/submissions with {answer}', () => {

@@ -8,6 +8,7 @@ import {
   CreateAssignmentRequest,
   createAssignment,
   getAssignment,
+  gradeSubmission,
   listAssignments,
   listSubmissions,
   submitAnswer
@@ -139,6 +140,22 @@ export const AssignmentStore = signalStore(
                 }
                 return fail(err);
               })
+            )
+          )
+        )
+      ),
+      gradeSubmission: rxMethod<{ assignmentId: string; submissionId: string; marks: number }>(
+        pipe(
+          tap(() => patchState(store, { status: 'saving', error: null, notice: null })),
+          switchMap(({ assignmentId, submissionId, marks }) =>
+            gradeSubmission(http, assignmentId, submissionId, marks).pipe(
+              tap((graded) =>
+                patchState(store, {
+                  status: 'saved',
+                  submissions: store.submissions().map((s) => (s.id === graded.id ? graded : s))
+                })
+              ),
+              catchError(fail)
             )
           )
         )

@@ -9,6 +9,7 @@ const assignment: Assignment = {
   id: 'a1',
   title: 'T',
   question: 'Q',
+  maxMarks: 10,
   createdAt: '2026-01-01T00:00:00.000Z',
   createdByEmail: 'alex.morgan@example.com'
 };
@@ -91,7 +92,7 @@ describe('AssignmentStore', () => {
   });
 
   it('create goes saving then saved with lastCreatedId', () => {
-    store.create({ title: 'T', question: 'Q' });
+    store.create({ title: 'T', question: 'Q', maxMarks: 10 });
     expect(store.status()).toBe('saving');
     expect(store.isSaving()).toBeTrue();
 
@@ -103,7 +104,7 @@ describe('AssignmentStore', () => {
   });
 
   it('create 400 joins the field messages into error', () => {
-    store.create({ title: '', question: '' });
+    store.create({ title: '', question: '', maxMarks: 10 });
     httpMock.expectOne('/api/assignments').flush(
       { errors: [{ field: 'title', message: 'Title is required.' }, { field: 'question', message: 'Question is required.' }] },
       { status: 400, statusText: 'Bad Request' }
@@ -159,7 +160,7 @@ describe('AssignmentStore', () => {
   it('reset clears error and lastCreatedId and returns to idle, keeping loaded data', () => {
     store.loadList();
     httpMock.expectOne('/api/assignments').flush([assignment]);
-    store.create({ title: 'T', question: 'Q' });
+    store.create({ title: 'T', question: 'Q', maxMarks: 10 });
     httpMock.expectOne('/api/assignments').flush(assignment);
 
     store.reset();
@@ -168,5 +169,33 @@ describe('AssignmentStore', () => {
     expect(store.error()).toBeNull();
     expect(store.lastCreatedId()).toBeNull();
     expect(store.assignments()).toEqual([assignment]);
+  });
+
+  it('gradeSubmission PUTs the marks and replaces just that submission in the list', () => {
+    const other: Submission = { ...submission, id: 's2', studentEmail: 'sam.rivera@example.com' };
+    store.loadSubmissions('a1');
+    httpMock.expectOne('/api/assignments/a1/submissions').flush([submission, other]);
+
+    store.gradeSubmission({ assignmentId: 'a1', submissionId: 's1', marks: 7.5 });
+    expect(store.status()).toBe('saving');
+    const req = httpMock.expectOne('/api/assignments/a1/submissions/s1/grade');
+    expect(req.request.body).toEqual({ marks: 7.5 });
+    req.flush({ ...submission, grade: 7.5 });
+
+    expect(store.status()).toBe('saved');
+    expect(store.submissions()).toEqual([{ ...submission, grade: 7.5 }, other]);
+  });
+
+  it('gradeSubmission surfaces a 400 message and leaves the list unchanged', () => {
+    store.loadSubmissions('a1');
+    httpMock.expectOne('/api/assignments/a1/submissions').flush([submission]);
+
+    store.gradeSubmission({ assignmentId: 'a1', submissionId: 's1', marks: 99 });
+    httpMock
+      .expectOne('/api/assignments/a1/submissions/s1/grade')
+      .flush({ errors: [{ field: 'marks', message: 'Grade must be between 0 and 10.' }] }, { status: 400, statusText: 'Bad Request' });
+
+    expect(store.error()).toBe('Grade must be between 0 and 10.');
+    expect(store.submissions()).toEqual([submission]);
   });
 });

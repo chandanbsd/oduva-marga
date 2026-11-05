@@ -5,6 +5,8 @@ export interface Assignment {
   id: string;
   title: string;
   question: string;
+  /** Maximum marks a submission can earn; always > 0. */
+  maxMarks: number;
   createdAt: string;
   createdByEmail: string;
 }
@@ -36,4 +38,6 @@ export interface Submission {
   studentName: string;
   submittedAt: string;
   answer: SubmissionAnswer;
+  /** Marks awarded by the teacher (0..maxMarks, fractions allowed); absent until graded. */
+  grade?: number;
 }

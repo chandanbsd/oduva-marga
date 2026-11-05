@@ -1,5 +1,5 @@
 import { Component, effect, inject } from '@angular/core';
-import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
+import { AbstractControl, FormControl, FormGroup, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -11,6 +11,11 @@ import { AssignmentStore } from '../../../../state/assignment/assignment.store';
 interface CreateFormControls {
   title: FormControl<string>;
   question: FormControl<string>;
+  maxMarks: FormControl<number | null>;
+}
+
+function positive(control: AbstractControl): ValidationErrors | null {
+  return typeof control.value === 'number' && control.value <= 0 ? { positive: true } : null;
 }
 
 @Component({
@@ -26,7 +31,8 @@ export class AssignmentCreatePageComponent {
 
   readonly form = new FormGroup<CreateFormControls>({
     title: new FormControl('', { nonNullable: true, validators: [notBlank] }),
-    question: new FormControl('', { nonNullable: true, validators: [notBlank] })
+    question: new FormControl('', { nonNullable: true, validators: [notBlank] }),
+    maxMarks: new FormControl<number | null>(null, [Validators.required, positive])
   });
 
   readonly isSaving = this.store.isSaving;
@@ -47,7 +53,7 @@ export class AssignmentCreatePageComponent {
       this.form.markAllAsTouched();
       return;
     }
-    const { title, question } = this.form.getRawValue();
-    this.store.create({ title: title.trim(), question: question.trim() });
+    const { title, question, maxMarks } = this.form.getRawValue();
+    this.store.create({ title: title.trim(), question: question.trim(), maxMarks: maxMarks as number });
   }
 }

@@ -7,6 +7,7 @@ import { Assignment, AssignmentSummary, Submission, SubmissionAnswer } from '../
 export interface CreateAssignmentRequest {
   title: string;
   question: string;
+  maxMarks: number;
 }
 
 export interface SubmitAnswerRequest {
@@ -41,5 +42,17 @@ export function submitAnswer(
   return http.post<Submission>(
     `${environment.apiBaseUrl}/assignments/${encodeURIComponent(assignmentId)}/submissions`,
     request
+  );
+}
+
+export function gradeSubmission(
+  http: HttpClient,
+  assignmentId: string,
+  submissionId: string,
+  marks: number
+): Observable<Submission> {
+  return http.put<Submission>(
+    `${environment.apiBaseUrl}/assignments/${encodeURIComponent(assignmentId)}/submissions/${encodeURIComponent(submissionId)}/grade`,
+    { marks }
   );
 }

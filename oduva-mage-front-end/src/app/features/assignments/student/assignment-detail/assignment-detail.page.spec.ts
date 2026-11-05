@@ -12,6 +12,7 @@ const assignment: Assignment = {
   id: 'a1',
   title: 'Photosynthesis',
   question: 'Explain it.',
+  maxMarks: 10,
   createdAt: '2026-01-01T00:00:00.000Z',
   createdByEmail: 'alex.morgan@example.com'
 };
@@ -203,6 +204,18 @@ describe('StudentAssignmentDetailPageComponent', () => {
 
     expect(el().querySelector('form')).toBeNull();
     expect(el().textContent).toContain('Earlier answer.');
+  });
+
+  it('shows the grade out of the maximum on a graded answer', () => {
+    load([{ ...existing, grade: 7.5 }]);
+
+    expect(el().textContent).toContain('Grade: 7.5 / 10');
+  });
+
+  it('says Not graded yet. when the answer has no grade', () => {
+    load([existing]);
+
+    expect(el().textContent).toContain('Not graded yet.');
   });
 
   it('shows the stored answer, with no error, when the server reports a duplicate (409)', () => {

@@ -26,13 +26,16 @@ describe('AssignmentCreatePageComponent', () => {
 
   const el = (f: ComponentFixture<unknown>) => f.nativeElement as HTMLElement;
 
-  function fill(f: ComponentFixture<unknown>, title: string, question: string): void {
+  function fill(f: ComponentFixture<unknown>, title: string, question: string, maxMarks = '10'): void {
     const title$ = el(f).querySelector('input') as HTMLInputElement;
     const question$ = el(f).querySelector('textarea') as HTMLTextAreaElement;
     title$.value = title;
     title$.dispatchEvent(new Event('input'));
     question$.value = question;
     question$.dispatchEvent(new Event('input'));
+    const marks$ = el(f).querySelector('input[type="number"]') as HTMLInputElement;
+    marks$.value = maxMarks;
+    marks$.dispatchEvent(new Event('input'));
   }
 
   function submit(f: ComponentFixture<unknown>): void {
@@ -49,6 +52,17 @@ describe('AssignmentCreatePageComponent', () => {
 
     expect(el(fixture).textContent).toContain('Title is required.');
     expect(el(fixture).textContent).toContain('Question is required.');
+    expect(el(fixture).textContent).toContain('Maximum marks is required.');
+    httpMock.expectNone('/api/assignments');
+  });
+
+  it('requires maxMarks greater than 0 and sends nothing otherwise', async () => {
+    const fixture = await setup();
+    fill(fixture, 'T', 'Q', '0');
+
+    submit(fixture);
+
+    expect(el(fixture).textContent).toContain('Maximum marks must be greater than 0.');
     httpMock.expectNone('/api/assignments');
   });
 
@@ -62,13 +76,13 @@ describe('AssignmentCreatePageComponent', () => {
     httpMock.expectNone('/api/assignments');
   });
 
-  it('POSTs the title and question, then navigates to the list', async () => {
+  it('POSTs the title, question and (fractional) maxMarks, then navigates to the list', async () => {
     const fixture = await setup();
-    fill(fixture, 'My title', 'My question');
+    fill(fixture, 'My title', 'My question', '12.5');
 
     submit(fixture);
     const req = httpMock.expectOne('/api/assignments');
-    expect(req.request.body).toEqual({ title: 'My title', question: 'My question' });
+    expect(req.request.body).toEqual({ title: 'My title', question: 'My question', maxMarks: 12.5 });
     req.flush({ id: 'a1', title: 'My title', question: 'My question', createdAt: 'x', createdByEmail: 'y' });
     fixture.detectChanges();
 
@@ -104,7 +118,7 @@ describe('AssignmentCreatePageComponent', () => {
     const store = TestBed.inject(AssignmentStore);
     const http = TestBed.inject(HttpTestingController);
     const navigate = spyOn(TestBed.inject(Router), 'navigate').and.resolveTo(true);
-    store.create({ title: 'T', question: 'Q' });
+    store.create({ title: 'T', question: 'Q', maxMarks: 10 });
     http.expectOne('/api/assignments').flush({ id: 'a1', title: 'T', question: 'Q', createdAt: 'x', createdByEmail: 'y' });
     expect(store.status()).toBe('saved');
 

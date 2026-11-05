@@ -31,14 +31,21 @@ function isBlank(value: unknown): boolean {
   return typeof value !== 'string' || value.trim().length === 0;
 }
 
+function isNumber(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value);
+}
+
 function validateCreate(body: unknown): ValidationErrorEntry[] {
-  const request = (body ?? {}) as { title?: unknown; question?: unknown };
+  const request = (body ?? {}) as { title?: unknown; question?: unknown; maxMarks?: unknown };
   const errors: ValidationErrorEntry[] = [];
   if (isBlank(request.title)) {
     errors.push({ field: 'title', message: 'Title is required.' });
   }
   if (isBlank(request.question)) {
     errors.push({ field: 'question', message: 'Question is required.' });
+  }
+  if (!isNumber(request.maxMarks) || request.maxMarks <= 0) {
+    errors.push({ field: 'maxMarks', message: 'Maximum marks must be greater than 0.' });
   }
   return errors;
 }
@@ -75,11 +82,13 @@ export function handleAssignmentsRequest(req: HttpRequest<unknown>): Observable<
   const collection = /\/assignments$/.exec(path);
   const item = /\/assignments\/([^/]+)$/.exec(path);
   const submissions = /\/assignments\/([^/]+)\/submissions$/.exec(path);
+  const grade = /\/assignments\/([^/]+)\/submissions\/([^/]+)\/grade$/.exec(path);
 
   const matched =
     (collection && (req.method === 'GET' || req.method === 'POST')) ||
     (item && req.method === 'GET') ||
-    (submissions && (req.method === 'GET' || req.method === 'POST'));
+    (submissions && (req.method === 'GET' || req.method === 'POST')) ||
+    (grade && req.method === 'PUT');
   if (!matched) {
     return null;
   }
@@ -93,13 +102,16 @@ export function handleAssignmentsRequest(req: HttpRequest<unknown>): Observable<
   if (collection) {
     return req.method === 'GET' ? list(storage, user) : create(storage, user, req);
   }
-  const id = decodeURIComponent((submissions ?? item)![1]);
+  const id = decodeURIComponent((grade ?? submissions ?? item)![1]);
   const assignment = storage.assignments.find((a) => a.id === id);
   if (!assignment) {
     return fail(404, { message: 'Assignment not found.' }, req.url);
   }
   if (item) {
     return reply(200, assignment);
+  }
+  if (grade) {
+    return gradeSubmission(storage, user, assignment, decodeURIComponent(grade[2]), req);
   }
   return req.method === 'GET' ? listSubmissions(storage, user, id) : submit(storage, user, id, req);
 }
@@ -123,11 +135,12 @@ function create(storage: MockApiStorage, user: AuthenticatedUser, req: HttpReque
   if (errors.length > 0) {
     return fail(400, { errors }, req.url);
   }
-  const body = req.body as { title: string; question: string };
+  const body = req.body as { title: string; question: string; maxMarks: number };
   const assignment: Assignment = {
     id: crypto.randomUUID(),
     title: body.title.trim(),
     question: body.question.trim(),
+    maxMarks: body.maxMarks,
     createdAt: new Date().toISOString(),
     createdByEmail: user.email
   };
@@ -162,4 +175,27 @@ function submit(storage: MockApiStorage, user: AuthenticatedUser, assignmentId: 
   };
   storage.submissions.push(submission);
   return persist(storage, req.url) ?? reply(201, submission);
+}
+
+function gradeSubmission(
+  storage: MockApiStorage,
+  user: AuthenticatedUser,
+  assignment: Assignment,
+  submissionId: string,
+  req: HttpRequest<unknown>
+) {
+  if (user.role !== 'teacher') {
+    return fail(403, { message: 'Only teachers can grade submissions.' }, req.url);
+  }
+  const submission = storage.submissions.find((s) => s.id === submissionId && s.assignmentId === assignment.id);
+  if (!submission) {
+    return fail(404, { message: 'Submission not found.' }, req.url);
+  }
+  const marks = (req.body as { marks?: unknown } | null)?.marks;
+  if (!isNumber(marks) || marks < 0 || marks > assignment.maxMarks) {
+    const errors = [{ field: 'marks', message: `Grade must be between 0 and ${assignment.maxMarks}.` }];
+    return fail(400, { errors }, req.url);
+  }
+  submission.grade = marks;
+  return persist(storage, req.url) ?? reply(200, submission);
 }

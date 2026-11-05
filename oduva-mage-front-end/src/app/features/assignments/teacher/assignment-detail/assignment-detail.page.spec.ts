@@ -10,6 +10,7 @@ const assignment: Assignment = {
   id: 'a1',
   title: 'Photosynthesis',
   question: 'Explain it.',
+  maxMarks: 10,
   createdAt: '2026-01-01T00:00:00.000Z',
   createdByEmail: 'alex.morgan@example.com'
 };
@@ -106,5 +107,68 @@ describe('TeacherAssignmentDetailPageComponent', () => {
     fixture.detectChanges();
 
     expect(el().querySelector('[role="alert"]')?.textContent).toContain('Assignment not found.');
+  });
+
+  describe('grading', () => {
+    const row = (name: string) =>
+      Array.from(el().querySelectorAll('li')).find((li) => li.textContent?.includes(name)) as HTMLElement;
+
+    function enterGrade(name: string, value: string): void {
+      const input = row(name).querySelector('input[type="number"]') as HTMLInputElement;
+      input.value = value;
+      input.dispatchEvent(new Event('input'));
+    }
+
+    function saveGrade(name: string): void {
+      (Array.from(row(name).querySelectorAll('button')).find((b) => b.textContent?.includes('Save grade')) as HTMLButtonElement).click();
+      fixture.detectChanges();
+    }
+
+    it('shows the maximum marks', () => {
+      flushLoads([]);
+
+      expect(el().textContent).toContain('Maximum marks: 10');
+    });
+
+    it('PUTs a fractional grade and then shows it', () => {
+      flushLoads([textSubmission]);
+      enterGrade('Jordan Taylor', '7.5');
+
+      saveGrade('Jordan Taylor');
+      const req = httpMock.expectOne('/api/assignments/a1/submissions/s1/grade');
+      expect(req.request.method).toBe('PUT');
+      expect(req.request.body).toEqual({ marks: 7.5 });
+      req.flush({ ...textSubmission, grade: 7.5 });
+      fixture.detectChanges();
+
+      expect(row('Jordan Taylor').textContent).toContain('Graded: 7.5 / 10');
+    });
+
+    it('pre-fills and shows an existing grade', () => {
+      flushLoads([{ ...textSubmission, grade: 8 }]);
+
+      expect(row('Jordan Taylor').textContent).toContain('Graded: 8 / 10');
+      expect((row('Jordan Taylor').querySelector('input[type="number"]') as HTMLInputElement).value).toBe('8');
+    });
+
+    it('rejects blank, negative and above-max grades without sending anything', () => {
+      flushLoads([textSubmission]);
+
+      for (const bad of ['', '-1', '10.5']) {
+        enterGrade('Jordan Taylor', bad);
+        saveGrade('Jordan Taylor');
+        expect(row('Jordan Taylor').textContent).toContain('Enter a grade between 0 and 10.');
+      }
+      httpMock.expectNone((r) => r.method === 'PUT');
+    });
+
+    it('accepts 0 as a valid grade', () => {
+      flushLoads([textSubmission]);
+      enterGrade('Jordan Taylor', '0');
+
+      saveGrade('Jordan Taylor');
+
+      expect(httpMock.expectOne('/api/assignments/a1/submissions/s1/grade').request.body).toEqual({ marks: 0 });
+    });
   });
 });

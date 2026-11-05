@@ -102,6 +102,32 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/ErrorMessage' }
         '413': { $ref: '#/components/responses/StorageFull' }
+  /assignments/{id}/submissions/{submissionId}/grade:
+    parameters:
+      - $ref: '#/components/parameters/AssignmentId'
+      - name: submissionId
+        in: path
+        required: true
+        schema: { type: string }
+    put:
+      operationId: gradeSubmission
+      summary: Grade a submission (teacher only; replaces any earlier grade)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/GradeRequest' }
+      responses:
+        '200':
+          description: The graded submission
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Submission' }
+        '400': { $ref: '#/components/responses/ValidationFailed' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '413': { $ref: '#/components/responses/StorageFull' }
 components:
   securitySchemes:
     sessionAuth:
@@ -144,11 +170,12 @@ components:
   schemas:
     Assignment:
       type: object
-      required: [id, title, question, createdAt, createdByEmail]
+      required: [id, title, question, maxMarks, createdAt, createdByEmail]
       properties:
         id: { type: string }
         title: { type: string }
         question: { type: string }
+        maxMarks: { type: number, exclusiveMinimum: true, minimum: 0, description: Maximum marks; fractions allowed. }
         createdAt: { type: string, format: date-time }
         createdByEmail: { type: string }
     AssignmentSummary:
@@ -161,10 +188,11 @@ components:
               description: Present only when the caller is a student.
     CreateAssignmentRequest:
       type: object
-      required: [title, question]
+      required: [title, question, maxMarks]
       properties:
         title: { type: string, minLength: 1 }
         question: { type: string, minLength: 1 }
+        maxMarks: { type: number, exclusiveMinimum: true, minimum: 0 }
     TextAnswer:
       type: object
       required: [kind, text]
@@ -206,6 +234,15 @@ components:
         studentName: { type: string }
         submittedAt: { type: string, format: date-time }
         answer: { $ref: '#/components/schemas/SubmissionAnswer' }
+        grade:
+          type: number
+          minimum: 0
+          description: Marks awarded by the teacher (at most the assignment's maxMarks); absent until graded.
+    GradeRequest:
+      type: object
+      required: [marks]
+      properties:
+        marks: { type: number, minimum: 0, description: Must not exceed the assignment's maxMarks. }
     ValidationError:
       type: object
       required: [errors]

@@ -10,6 +10,7 @@ const summary = (id: string, title: string, submitted: boolean): AssignmentSumma
   id,
   title,
   question: 'Q',
+  maxMarks: 10,
   createdAt: '2026-01-01T00:00:00.000Z',
   createdByEmail: 'alex.morgan@example.com',
   submitted

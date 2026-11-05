@@ -11,6 +11,16 @@
   </mat-form-field>
 
   <mat-form-field appearance="outline" class="assignment-create-page__field">
+    <mat-label>Maximum marks</mat-label>
+    <input matInput type="number" step="any" formControlName="maxMarks" />
+    @if (form.controls.maxMarks.hasError('required')) {
+      <mat-error>Maximum marks is required.</mat-error>
+    } @else if (form.controls.maxMarks.hasError('positive')) {
+      <mat-error>Maximum marks must be greater than 0.</mat-error>
+    }
+  </mat-form-field>
+
+  <mat-form-field appearance="outline" class="assignment-create-page__field">
     <mat-label>Question</mat-label>
     <textarea matInput rows="6" formControlName="question"></textarea>
     @if (form.controls.question.hasError('required')) {
