@@ -20,7 +20,7 @@
         }
       } @else {
         <form [formGroup]="form" (ngSubmit)="onSubmit()" class="assignment-detail-page__form">
-          <mat-button-toggle-group aria-label="Answer type" [value]="mode()" (change)="mode.set($event.value)">
+          <mat-button-toggle-group aria-label="How to respond" [value]="mode()" (change)="mode.set($event.value)">
             <mat-button-toggle value="text">Type answer</mat-button-toggle>
             <mat-button-toggle value="file">Upload file</mat-button-toggle>
           </mat-button-toggle-group>
