@@ -1,0 +1,49 @@
+<section class="assignment-detail-page">
+  <a routerLink="/student/assignments">Back to assignments</a>
+
+  @if (error()) {
+    <p class="assignment-detail-page__error" role="alert">{{ error() }}</p>
+  }
+
+  @if (assignment(); as current) {
+    <h1>{{ current.title }}</h1>
+    <p class="assignment-detail-page__question">{{ current.question }}</p>
+
+    @if (submissionsLoaded()) {
+      @if (mySubmission(); as submission) {
+        <h2>Your answer</h2>
+        <p>Submitted {{ submission.submittedAt | date: 'medium' }}</p>
+        @if (submission.answer.kind === 'text') {
+          <p class="assignment-detail-page__text">{{ submission.answer.text }}</p>
+        } @else {
+          <p>{{ submission.answer.fileName }} ({{ formatBytes(submission.answer.sizeBytes) }})</p>
+        }
+      } @else {
+        <form [formGroup]="form" (ngSubmit)="onSubmit()" class="assignment-detail-page__form">
+          <mat-button-toggle-group aria-label="Answer type" [value]="mode()" (change)="mode.set($event.value)">
+            <mat-button-toggle value="text">Type answer</mat-button-toggle>
+            <mat-button-toggle value="file">Upload file</mat-button-toggle>
+          </mat-button-toggle-group>
+
+          @if (mode() === 'text') {
+            <mat-form-field appearance="outline" class="assignment-detail-page__field">
+              <mat-label>Answer</mat-label>
+              <textarea matInput rows="8" formControlName="answerText"></textarea>
+              @if (answerText.hasError('required')) {
+                <mat-error>Answer is required.</mat-error>
+              }
+            </mat-form-field>
+          } @else {
+            <label for="answer-file">File</label>
+            <input id="answer-file" type="file" (change)="onFileSelected($event)" />
+            @if (fileError()) {
+              <p class="assignment-detail-page__error" role="alert">{{ fileError() }}</p>
+            }
+          }
+
+          <button mat-flat-button color="primary" type="submit" [disabled]="isSaving()">Submit answer</button>
+        </form>
+      }
+    }
+  }
+</section>

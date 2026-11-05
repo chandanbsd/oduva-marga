@@ -33,5 +33,21 @@ export const routes: Routes = [
       import('./features/assignments/teacher/assignment-detail/assignment-detail.page').then(
         (m) => m.TeacherAssignmentDetailPageComponent
       )
+  },
+  {
+    path: 'student/assignments',
+    canActivate: [roleGuard('student')],
+    loadComponent: () =>
+      import('./features/assignments/student/assignment-list/assignment-list.page').then(
+        (m) => m.StudentAssignmentListPageComponent
+      )
+  },
+  {
+    path: 'student/assignments/:id',
+    canActivate: [roleGuard('student')],
+    loadComponent: () =>
+      import('./features/assignments/student/assignment-detail/assignment-detail.page').then(
+        (m) => m.StudentAssignmentDetailPageComponent
+      )
   }
 ];

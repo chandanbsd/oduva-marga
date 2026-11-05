@@ -21,6 +21,8 @@ export interface AssignmentState {
   assignments: AssignmentSummary[];
   selected: Assignment | null;
   submissions: Submission[];
+  /** False until the caller's visible submissions have been fetched, so UIs don't flash an empty state. */
+  submissionsLoaded: boolean;
   status: AssignmentStatus;
   error: string | null;
   lastCreatedId: string | null;
@@ -30,6 +32,7 @@ const initialState: AssignmentState = {
   assignments: [],
   selected: null,
   submissions: [],
+  submissionsLoaded: false,
   status: 'idle',
   error: null,
   lastCreatedId: null
@@ -89,10 +92,10 @@ export const AssignmentStore = signalStore(
       ),
       loadSubmissions: rxMethod<string>(
         pipe(
-          tap(() => patchState(store, { status: 'loading', error: null, submissions: [] })),
+          tap(() => patchState(store, { status: 'loading', error: null, submissions: [], submissionsLoaded: false })),
           switchMap((assignmentId) =>
             listSubmissions(http, assignmentId).pipe(
-              tap((submissions) => patchState(store, { submissions, status: 'idle' })),
+              tap((submissions) => patchState(store, { submissions, submissionsLoaded: true, status: 'idle' })),
               catchError(fail)
             )
           )
@@ -114,12 +117,12 @@ export const AssignmentStore = signalStore(
           tap(() => patchState(store, { status: 'saving', error: null })),
           switchMap(({ assignmentId, answer }) =>
             submitAnswer(http, assignmentId, { answer }).pipe(
-              tap((submission) => patchState(store, { status: 'saved', submissions: [submission] })),
+              tap((submission) => patchState(store, { status: 'saved', submissions: [submission], submissionsLoaded: true })),
               catchError((err: unknown) => {
                 // Already submitted (double-click, second tab): show the stored answer instead of an error.
                 if (err instanceof HttpErrorResponse && err.status === 409) {
                   return listSubmissions(http, assignmentId).pipe(
-                    tap((submissions) => patchState(store, { submissions, status: 'idle', error: null })),
+                    tap((submissions) => patchState(store, { submissions, submissionsLoaded: true, status: 'idle', error: null })),
                     catchError(fail)
                   );
                 }

@@ -42,6 +42,7 @@ describe('AssignmentStore', () => {
     expect(store.submissions()).toEqual([]);
     expect(store.error()).toBeNull();
     expect(store.lastCreatedId()).toBeNull();
+    expect(store.submissionsLoaded()).toBeFalse();
   });
 
   it('loadList goes loading then idle with the assignments', () => {
@@ -78,6 +79,14 @@ describe('AssignmentStore', () => {
     httpMock.expectOne('/api/assignments/a1/submissions').flush([submission]);
 
     expect(store.submissions()).toEqual([submission]);
+    expect(store.submissionsLoaded()).toBeTrue();
+  });
+
+  it('loadSubmissions marks submissionsLoaded false while in flight', () => {
+    store.loadSubmissions('a1');
+
+    expect(store.submissionsLoaded()).toBeFalse();
+    httpMock.expectOne('/api/assignments/a1/submissions').flush([]);
   });
 
   it('create goes saving then saved with lastCreatedId', () => {
@@ -111,6 +120,7 @@ describe('AssignmentStore', () => {
 
     expect(store.status()).toBe('saved');
     expect(store.submissions()).toEqual([submission]);
+    expect(store.submissionsLoaded()).toBeTrue();
   });
 
   it('submit 409 reloads own submissions and ends idle without an error', () => {
