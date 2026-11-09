@@ -9,7 +9,7 @@ import org.keycloak.representations.idm.UserRepresentation;
 import org.springframework.stereotype.Service;
 
 import com.oduvamarga.core.constants.UserRole;
-import com.oduvamarga.core.domain.User;
+import com.oduvamarga.core.model.User;
 import com.oduvamarga.core.dto.StudentRegistrationDto;
 import com.oduvamarga.core.mapper.UserMapper;
 import com.oduvamarga.core.repository.UserRepository;

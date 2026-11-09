@@ -1,6 +1,6 @@
 package com.oduvamarga.core.repository;
 
-import com.oduvamarga.core.domain.User;
+import com.oduvamarga.core.model.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

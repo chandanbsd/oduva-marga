@@ -25,7 +25,6 @@ public class KeycloakConfig {
     }
 
     @Bean
-    
     public Keycloak keycloak() {
         return KeycloakBuilder.builder()
                 .serverUrl(keycloakServerUrl)

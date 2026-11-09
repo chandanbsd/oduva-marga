@@ -44,9 +44,45 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
     }
 
+    @ExceptionHandler(InvalidGradeException.class)
+    public ResponseEntity<ApiError> handleInvalidGrade(InvalidGradeException ex) {
+        ApiError error = new ApiError("INVALID_GRADE", ex.getMessage(), "grade");
+        return ResponseEntity.status(BAD_REQUEST).body(error);
+    }
+
+    @ExceptionHandler(DuplicateAssignmentSubmissionException.class)
+    public ResponseEntity<ApiError> handleDuplicateAssignmentSubmission(DuplicateAssignmentSubmissionException ex) {
+        ApiError error = new ApiError("DUPLICATE_ASSIGNMENT_SUBMISSION", ex.getMessage(), "general");
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+    }
+
+    @ExceptionHandler(AssignmentNotFoundException.class)
+    public ResponseEntity<ApiError> handleAssignmentNotFound(AssignmentNotFoundException ex) {
+        ApiError error = new ApiError("ASSIGNMENT_NOT_FOUND", ex.getMessage(), "assignmentId");
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
+    }
+
+    @ExceptionHandler(AssignmentAnswerNotFoundException.class)
+    public ResponseEntity<ApiError> handleAssignmentAnswerNotFound(AssignmentAnswerNotFoundException ex) {
+        ApiError error = new ApiError("ASSIGNMENT_ANSWER_NOT_FOUND", ex.getMessage(), "submissionId");
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
+    }
+
+    @ExceptionHandler(AssignmentAnswerAccessDeniedException.class)
+    public ResponseEntity<ApiError> handleAssignmentAnswerAccessDenied(AssignmentAnswerAccessDeniedException ex) {
+        ApiError error = new ApiError("ASSIGNMENT_ANSWER_ACCESS_DENIED", ex.getMessage(), "general");
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
+    }
+
     @ExceptionHandler(IllegalStateException.class)
     public ResponseEntity<ApiError> handleGenericConflict(IllegalStateException ex) {
         ApiError error = new ApiError("REGISTRATION_CONFLICT", ex.getMessage(), "general");
         return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+    }
+
+    @ExceptionHandler(TeacherUnauthorizedUpdateGradeException.class)
+    public ResponseEntity<ApiError> handleTeacherUnauthorizedUpdateGrade(TeacherUnauthorizedUpdateGradeException ex) {
+        ApiError error = new ApiError("TEACHER_UNAUTHORIZED_UPDATE_GRADE", ex.getMessage(), "general");
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
     }
 }

@@ -4,11 +4,10 @@ import lombok.Getter;
 
 @Getter
 public enum UserRole {
-    ADMIN(1),
-    TEACHER(2),
-    STUDENT(3);
+    STUDENT(1),
+    TEACHER(2);
 
-    final private int roleId;
+    private final int roleId;
 
     UserRole(int roleId) {
         this.roleId = roleId;
