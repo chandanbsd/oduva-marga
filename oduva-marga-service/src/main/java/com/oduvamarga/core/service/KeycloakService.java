@@ -1,5 +1,6 @@
 package com.oduvamarga.core.service;
 
+import com.oduvamarga.core.constants.CommonConstants;
 import com.oduvamarga.core.exception.DuplicateEmailException;
 import com.oduvamarga.core.exception.DuplicateUsernameException;
 import jakarta.ws.rs.core.Response;
@@ -61,7 +62,7 @@ public class KeycloakService {
     public void addUserId(UserRepresentation user, long id) {
         String userId = user.getId();
 
-        user.singleAttribute("om_id", String.valueOf(id));
+        user.singleAttribute(CommonConstants.USER_ID, String.valueOf(id));
 
         keycloak.realm(realm)
                 .users()

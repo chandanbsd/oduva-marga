@@ -1,4 +1,4 @@
-package com.oduvamarga.core.domain;
+package com.oduvamarga.core.model;
 
 import jakarta.persistence.*;
 import lombok.Getter;
